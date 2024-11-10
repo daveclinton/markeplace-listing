@@ -13,6 +13,7 @@ import { MarketplacesModule } from './marketplaces/marketplaces.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

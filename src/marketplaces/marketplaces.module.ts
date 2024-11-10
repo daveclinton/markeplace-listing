@@ -1,13 +1,16 @@
-// marketplaces.module.ts
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
+
 import { MarketplacesService } from './marketplaces.service';
-import { MarketplacesController } from './marketplaces.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserMarketplaceLink } from './user.marketplace-link.enity';
+import { MarketplaceConfigService } from './marketplaces.config';
+import { MarketplacesController } from './marketplaces.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UserMarketplaceLink])],
-  providers: [MarketplacesService],
+  imports: [ConfigModule, TypeOrmModule.forFeature([UserMarketplaceLink])],
   controllers: [MarketplacesController],
+  providers: [MarketplaceConfigService, MarketplacesService],
+  exports: [MarketplaceConfigService, MarketplacesService],
 })
 export class MarketplacesModule {}

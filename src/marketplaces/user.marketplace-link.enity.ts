@@ -27,4 +27,13 @@ export class UserMarketplaceLink {
     referencedColumnName: 'supabase_user_id',
   })
   user: User;
+
+  @Column({ nullable: true })
+  accessToken: string;
+
+  @Column({ nullable: true })
+  refreshToken: string;
+
+  @Column({ nullable: true })
+  tokenExpiresAt: Date;
 }
