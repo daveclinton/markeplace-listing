@@ -1,4 +1,4 @@
-export type MarketplaceSlug = 'ebay' | 'facebook';
+export type MarketplaceSlug = 'ebay' | 'facebook' | string;
 
 export interface OAuthConfig {
   oauth_url: string;
@@ -17,4 +17,15 @@ export interface MarketplaceConfig {
   is_supported: boolean;
   is_linked: boolean;
   oauth: OAuthConfig;
+}
+
+export interface MarketplaceConfigWithOAuth extends MarketplaceConfig {
+  is_linked: boolean;
+  oauth_url?: string;
+}
+
+export interface MarketplaceStatus {
+  isLinked: boolean;
+  tokenStatus: 'valid' | 'expired' | 'none';
+  expiresAt?: Date;
 }

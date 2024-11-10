@@ -26,7 +26,12 @@ import {
   LinkMarketplaceDto,
   OAuthCallbackDto,
 } from './dto/marketplace.dto';
-import { MarketplaceSlug } from './marketplace.types';
+import {
+  MarketplaceSlug,
+  MarketplaceConfig,
+  MarketplaceConfigWithOAuth,
+  MarketplaceStatus,
+} from './marketplace.types';
 
 @ApiTags('marketplaces')
 @Controller('marketplaces')
@@ -45,7 +50,7 @@ export class MarketplacesController {
     status: HttpStatus.OK,
     description: 'Returns list of all available marketplaces',
   })
-  async getAllMarketplaces() {
+  async getAllMarketplaces(): Promise<MarketplaceConfig[]> {
     return this.marketplaceConfig.getAllMarketplaces();
   }
 
@@ -55,7 +60,7 @@ export class MarketplacesController {
     status: HttpStatus.OK,
     description: 'Returns list of supported marketplaces',
   })
-  async getSupportedMarketplaces() {
+  async getSupportedMarketplaces(): Promise<MarketplaceConfig[]> {
     return this.marketplaceConfig.getSupportedMarketplaces();
   }
 
@@ -72,7 +77,7 @@ export class MarketplacesController {
   })
   async getMarketplacesForUser(
     @Param('userSupabaseId') userSupabaseId: string,
-  ) {
+  ): Promise<MarketplaceConfigWithOAuth[]> {
     try {
       return await this.marketplacesService.getMarketplacesForUser(
         userSupabaseId,
@@ -99,7 +104,7 @@ export class MarketplacesController {
   async linkMarketplace(
     @Param('userSupabaseId') userSupabaseId: string,
     @Body() linkDto: LinkMarketplaceDto,
-  ) {
+  ): Promise<{ status: number; message: string }> {
     try {
       if (!this.marketplaceConfig.isMarketplaceSupported(linkDto.marketplace)) {
         throw new BadRequestException(
@@ -132,7 +137,9 @@ export class MarketplacesController {
     status: HttpStatus.OK,
     description: 'Returns OAuth URL for the specified marketplace',
   })
-  async generateOAuthUrl(@Body() urlDto: GenerateOAuthUrlDto) {
+  async generateOAuthUrl(
+    @Body() urlDto: GenerateOAuthUrlDto,
+  ): Promise<{ url: string }> {
     try {
       if (!this.marketplaceConfig.isMarketplaceSupported(urlDto.marketplace)) {
         throw new BadRequestException(
@@ -158,7 +165,7 @@ export class MarketplacesController {
   async handleOAuthCallback(
     @Param('marketplace') marketplace: string,
     @Query() callbackDto: OAuthCallbackDto,
-  ) {
+  ): Promise<{ url: string; statusCode: number }> {
     try {
       if (
         !this.marketplaceConfig.isMarketplaceSupported(
@@ -176,14 +183,12 @@ export class MarketplacesController {
         callbackDto.userSupabaseId,
       );
 
-      // Redirect to success page with marketplace info
       return {
         url: `/dashboard?marketplace=${marketplace}&status=success`,
         statusCode: HttpStatus.TEMPORARY_REDIRECT,
       };
     } catch (error) {
       this.logger.error(`OAuth callback error: ${error.message}`);
-      // Redirect to error page with error info
       return {
         url: `/dashboard?marketplace=${marketplace}&status=error&message=${encodeURIComponent(error.message)}`,
         statusCode: HttpStatus.TEMPORARY_REDIRECT,
@@ -203,10 +208,34 @@ export class MarketplacesController {
     description: 'Supabase user ID',
     type: String,
   })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns marketplace connection status',
+    type: 'object',
+    schema: {
+      properties: {
+        status: {
+          type: 'object',
+          properties: {
+            isLinked: { type: 'boolean' },
+            tokenStatus: {
+              type: 'string',
+              enum: ['valid', 'expired', 'none'],
+            },
+            expiresAt: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
+          },
+        },
+      },
+    },
+  })
   async getMarketplaceStatus(
     @Param('marketplace') marketplace: MarketplaceSlug,
     @Query('userSupabaseId') userSupabaseId: string,
-  ) {
+  ): Promise<{ status: MarketplaceStatus }> {
     try {
       if (!this.marketplaceConfig.isMarketplaceSupported(marketplace)) {
         throw new BadRequestException(

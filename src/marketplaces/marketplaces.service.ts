@@ -13,6 +13,10 @@ import { UserMarketplaceLink } from './user.marketplace-link.enity';
 import { MarketplaceConfigService } from './marketplaces.config';
 import { MarketplaceConfig, MarketplaceSlug } from './marketplace.types';
 
+interface MarketplaceConfigWithOAuth extends MarketplaceConfig {
+  oauth_url?: string;
+}
+
 @Injectable()
 export class MarketplacesService {
   private readonly logger = new Logger(MarketplacesService.name);
@@ -25,15 +29,57 @@ export class MarketplacesService {
 
   async getMarketplacesForUser(
     userSupabaseId: string,
-  ): Promise<MarketplaceConfig[]> {
-    const links = await this.userMarketplaceLinkRepo.find({
-      where: { userSupabaseId },
-    });
+  ): Promise<MarketplaceConfigWithOAuth[]> {
+    try {
+      const links = await this.userMarketplaceLinkRepo.find({
+        where: { userSupabaseId },
+      });
 
-    return this.marketplaceConfig.getAllMarketplaces().map((marketplace) => ({
-      ...marketplace,
-      is_linked: links.some((link) => link.marketplaceId === marketplace.id),
-    }));
+      const marketplaces = await Promise.all(
+        this.marketplaceConfig.getAllMarketplaces().map(async (marketplace) => {
+          const link = links.find((l) => l.marketplaceId === marketplace.id);
+          const isLinked = Boolean(link?.isLinked);
+
+          // Generate OAuth URL for supported and unlinked marketplaces
+          let oauthUrl: string | undefined;
+          if (marketplace.is_supported && !isLinked) {
+            try {
+              const state = this.generateState(userSupabaseId);
+              await this.storeOAuthState(state, userSupabaseId);
+
+              const params = new URLSearchParams({
+                client_id: marketplace.oauth.client_id,
+                redirect_uri: marketplace.oauth.redirect_uri,
+                scope: marketplace.oauth.scope,
+                response_type: 'code',
+                state,
+              });
+
+              oauthUrl = `${marketplace.oauth.oauth_url}?${params.toString()}`;
+            } catch (error) {
+              this.logger.error(
+                `Error generating OAuth URL for marketplace ${marketplace.slug}`,
+                error,
+              );
+            }
+          }
+
+          return {
+            ...marketplace,
+            is_linked: isLinked,
+            oauth_url: oauthUrl,
+          };
+        }),
+      );
+
+      return marketplaces;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching marketplaces for user ${userSupabaseId}`,
+        error.stack,
+      );
+      throw new BadRequestException('Failed to fetch marketplaces');
+    }
   }
 
   async linkMarketplace(
@@ -210,14 +256,36 @@ export class MarketplacesService {
     return response.json();
   }
 
+  private generateState(userSupabaseId: string): string {
+    return crypto
+      .createHash('sha256')
+      .update(
+        `${userSupabaseId}-${Date.now()}-${crypto.randomBytes(16).toString('hex')}`,
+      )
+      .digest('hex');
+  }
+
   private async storeOAuthState(
     state: string,
     userSupabaseId: string,
   ): Promise<void> {
-    // TODO: Implement state storage (e.g., using Redis)
-    // This is a placeholder for the state storage implementation
-    this.logger.debug(
-      `Storing OAuth state for user ${userSupabaseId}: ${state}`,
-    );
+    try {
+      const stateKey = `oauth:state:${state}`;
+      const stateData = {
+        userSupabaseId,
+        createdAt: Date.now(),
+      };
+      console.log(stateData, stateKey);
+
+      // await this.redis.set(
+      //   stateKey,
+      //   JSON.stringify(stateData),
+      //   'EX',
+      //   600, // 10 minutes
+      // );
+    } catch (error) {
+      this.logger.error('Failed to store OAuth state', error);
+      throw new BadRequestException('Unable to initiate OAuth flow');
+    }
   }
 }
