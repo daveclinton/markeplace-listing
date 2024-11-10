@@ -9,6 +9,8 @@ import { TimeoutInterceptor } from './common/interceptors/timeout.interceptot';
 import { WinstonModule } from 'nest-winston';
 import { instance } from './common/logger/winston.logger';
 
+declare const module: any;
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger({ instance: instance }),
@@ -57,5 +59,10 @@ async function bootstrap() {
   await app.listen(port);
 
   console.log(`Application is running on: http://localhost:${port}`);
+
+  if (module.hot) {
+    module.hot.accept();
+    module.hot.dispose(() => app.close());
+  }
 }
 bootstrap();
