@@ -1,0 +1,6 @@
+{
+  "watch": ["src", "supabase.service.ts"],
+  "ext": "ts",
+  "ignore": ["src/**/*.spec.ts", "test/**/*.ts"],
+  "exec": "nest start --watch"
+}
