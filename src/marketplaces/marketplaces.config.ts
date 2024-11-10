@@ -31,7 +31,8 @@ export class MarketplaceConfigService {
         client_secret:
           this.configService.getOrThrow<string>('EBAY_CLIENT_SECRET'),
         redirect_uri: `${baseUrl}/api/marketplace/callback/ebay`,
-        scope: 'https://api.ebay.com/oauth/api_scope/sell.inventory',
+        scope:
+          'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly https://api.ebay.com/oauth/api_scope/sell.inventory',
       },
     });
 
