@@ -1,29 +1,61 @@
-Now, to test the setup:
+# Docker Development Setup
 
-Build and run the development environment:
+This guide explains how to build and run the application in both development and production environments using Docker.
 
-bashCopy# First time or after dependencies change
+## Development Environment
+
+### First Time Setup
+```bash
+# Build and run containers with dependencies
 docker-compose up --build
+```
 
-# Subsequent runs
+### Regular Usage
+```bash
+# Start containers
 docker-compose up
 
-Build and run the production environment:
-
-bashCopy# First time or after dependencies change
-docker-compose -f docker-compose.prod.yml up --build
-
-# Subsequent runs
-docker-compose -f docker-compose.prod.yml up
-To stop the containers:
-bashCopy# Development
+# Stop containers
 docker-compose down
+```
 
-# Production
+## Production Environment
+
+### First Time Setup
+```bash
+# Build and run containers with dependencies
+docker-compose -f docker-compose.prod.yml up --build
+```
+
+### Regular Usage
+```bash
+# Start containers
+docker-compose -f docker-compose.prod.yml up
+
+# Stop containers
 docker-compose -f docker-compose.prod.yml down
-To view logs:
-bashCopy# Follow logs
+```
+
+## Logging
+
+View container logs using the following commands:
+
+```bash
+# Follow all container logs
 docker-compose logs -f
 
-# View specific service logs
+# View specific service logs (e.g., app service)
 docker-compose logs -f app
+```
+
+## Quick Reference
+
+| Environment | Build & Run | Stop |
+|-------------|------------|------|
+| Development | `docker-compose up --build` | `docker-compose down` |
+| Production | `docker-compose -f docker-compose.prod.yml up --build` | `docker-compose -f docker-compose.prod.yml down` |
+
+## Notes
+- Use `--build` flag when dependencies change or during first-time setup
+- For regular usage, you can omit the `--build` flag
+- Production environment uses a separate configuration file: `docker-compose.prod.yml`
