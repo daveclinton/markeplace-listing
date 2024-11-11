@@ -6,10 +6,11 @@ import {
   Param,
   Query,
   HttpStatus,
-  Redirect,
   BadRequestException,
   Logger,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -160,12 +161,12 @@ export class MarketplacesController {
   }
 
   @Get('oauth/callback/:marketplace')
-  @ApiOperation({ summary: 'Handle OAuth callback' })
-  @Redirect()
+  @ApiOperation({ summary: 'Handle OAuth callback and redirect to mobile app' })
   async handleOAuthCallback(
     @Param('marketplace') marketplace: string,
     @Query() callbackDto: OAuthCallbackDto,
-  ): Promise<{ url: string; statusCode: number }> {
+    @Res() res: Response,
+  ): Promise<void> {
     try {
       if (
         !this.marketplaceConfig.isMarketplaceSupported(
@@ -177,22 +178,43 @@ export class MarketplacesController {
         );
       }
 
+      // Process the OAuth callback
       await this.marketplacesService.handleOAuthCallback(
         marketplace as MarketplaceSlug,
         callbackDto.code,
         callbackDto.userSupabaseId,
       );
 
-      return {
-        url: `/dashboard?marketplace=${marketplace}&status=success`,
-        statusCode: HttpStatus.TEMPORARY_REDIRECT,
-      };
+      // Get marketplace config
+      const config = this.marketplaceConfig.getMarketplaceConfig(
+        marketplace as MarketplaceSlug,
+      );
+
+      // Build success URL for Expo app
+      const redirectUrl = new URL(config.mobile_app.scheme);
+      redirectUrl.searchParams.append('status', 'success');
+      redirectUrl.searchParams.append('marketplace', marketplace);
+
+      // Redirect to Expo app
+      return res.redirect(302, redirectUrl.toString());
     } catch (error) {
       this.logger.error(`OAuth callback error: ${error.message}`);
-      return {
-        url: `/dashboard?marketplace=${marketplace}&status=error&message=${encodeURIComponent(error.message)}`,
-        statusCode: HttpStatus.TEMPORARY_REDIRECT,
-      };
+
+      // Get config for error redirect
+      const config = this.marketplaceConfig.getMarketplaceConfig(
+        marketplace as MarketplaceSlug,
+      );
+
+      // Build error URL for Expo app
+      const redirectUrl = new URL(config.mobile_app.scheme);
+      redirectUrl.searchParams.append('status', 'error');
+      redirectUrl.searchParams.append('marketplace', marketplace);
+      redirectUrl.searchParams.append(
+        'error',
+        encodeURIComponent(error.message),
+      );
+
+      return res.redirect(302, redirectUrl.toString());
     }
   }
 

@@ -8,6 +8,9 @@ export interface OAuthConfig {
   redirect_uri: string;
   scope: string;
 }
+export interface MobileAppConfig {
+  scheme: string;
+}
 
 export interface MarketplaceConfig {
   id: number;
@@ -16,6 +19,7 @@ export interface MarketplaceConfig {
   icon_url: string;
   is_supported: boolean;
   is_linked: boolean;
+  mobile_app: MobileAppConfig;
   oauth: OAuthConfig;
 }
 

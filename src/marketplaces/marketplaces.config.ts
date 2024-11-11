@@ -23,6 +23,9 @@ export class MarketplaceConfigService {
         'https://d1yjjnpx0p53s8.cloudfront.net/styles/logo-thumbnail/s3/042013/ebay_logo.png?itok=QLz1bS2p',
       is_supported: true,
       is_linked: false,
+      mobile_app: {
+        scheme: 'com.snaplist://auth/accept',
+      },
       oauth: {
         oauth_url: 'https://auth.sandbox.ebay.com/oauth2/authorize',
         token_url: 'https://api.sandbox.ebay.com/identity/v1/oauth2/token',
@@ -42,6 +45,9 @@ export class MarketplaceConfigService {
         'https://cdn2.iconfinder.com/data/icons/social-media-2285/512/1_Facebook2_colored_svg-1024.png',
       is_supported: true,
       is_linked: false,
+      mobile_app: {
+        scheme: 'com.snaplist://auth/accept',
+      },
       oauth: {
         oauth_url: 'https://www.facebook.com/v12.0/dialog/oauth',
         token_url: 'https://graph.facebook.com/v12.0/oauth/access_token',
