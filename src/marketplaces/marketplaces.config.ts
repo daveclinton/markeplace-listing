@@ -15,7 +15,6 @@ export class MarketplaceConfigService {
 
     const baseUrl = this.configService.get<string>('APP_URL');
 
-    // eBay Configuration
     marketplaceMap.set('ebay', {
       id: 1,
       name: 'eBay',
@@ -35,27 +34,25 @@ export class MarketplaceConfigService {
           'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly https://api.ebay.com/oauth/api_scope/sell.inventory',
       },
     });
-
-    // Facebook Configuration
-    // marketplaceMap.set('facebook', {
-    //   id: 2,
-    //   name: 'Facebook',
-    //   slug: 'facebook',
-    //   icon_url:
-    //     'https://cdn2.iconfinder.com/data/icons/social-media-2285/512/1_Facebook2_colored_svg-1024.png',
-    //   is_supported: true,
-    //   is_linked: false,
-    //   oauth: {
-    //     oauth_url: 'https://www.facebook.com/v12.0/dialog/oauth',
-    //     token_url: 'https://graph.facebook.com/v12.0/oauth/access_token',
-    //     client_id: this.configService.getOrThrow<string>('FACEBOOK_CLIENT_ID'),
-    //     client_secret: this.configService.getOrThrow<string>(
-    //       'FACEBOOK_CLIENT_SECRET',
-    //     ),
-    //     redirect_uri: `${baseUrl}/api/marketplace/callback/facebook`,
-    //     scope: 'marketplace_management',
-    //   },
-    // });
+    marketplaceMap.set('facebook', {
+      id: 2,
+      name: 'Facebook',
+      slug: 'facebook',
+      icon_url:
+        'https://cdn2.iconfinder.com/data/icons/social-media-2285/512/1_Facebook2_colored_svg-1024.png',
+      is_supported: true,
+      is_linked: false,
+      oauth: {
+        oauth_url: 'https://www.facebook.com/v12.0/dialog/oauth',
+        token_url: 'https://graph.facebook.com/v12.0/oauth/access_token',
+        client_id: this.configService.getOrThrow<string>('FACEBOOK_CLIENT_ID'),
+        client_secret: this.configService.getOrThrow<string>(
+          'FACEBOOK_CLIENT_SECRET',
+        ),
+        redirect_uri: `${baseUrl}/api/marketplace/callback/facebook`,
+        scope: 'catalog_management',
+      },
+    });
 
     return marketplaceMap;
   }
