@@ -3,7 +3,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { UsersModule } from './users/users.module';
-import { SupabaseService } from 'supabase.service';
 import { AppService } from './app.service';
 import { MarketplacesModule } from './marketplaces/marketplaces.module';
 
@@ -18,11 +17,14 @@ import { MarketplacesModule } from './marketplaces/marketplaces.module';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         type: 'postgres',
-        host: configService.get<string>('DATABASE_HOST'),
-        port: configService.get<number>('DATABASE_PORT'),
-        username: configService.get<string>('DATABASE_USERNAME'),
-        password: configService.get<string>('DATABASE_PASSWORD'),
-        database: configService.get<string>('DATABASE_NAME'),
+        host: configService.get<string>('SUPABASE_DB_HOST'),
+        port: configService.get<number>('SUPABASE_DB_PORT'),
+        username: configService.get<string>('SUPABASE_DB_USER'),
+        password: configService.get<string>('SUPABASE_DB_PASSWORD'),
+        database: configService.get<string>('SUPABASE_DB_NAME'),
+        ssl: {
+          rejectUnauthorized: false,
+        },
         autoLoadEntities: true,
         synchronize: true,
       }),
@@ -32,6 +34,6 @@ import { MarketplacesModule } from './marketplaces/marketplaces.module';
     MarketplacesModule,
   ],
   controllers: [AppController],
-  providers: [AppService, SupabaseService, Logger],
+  providers: [AppService, Logger],
 })
 export class AppModule {}
