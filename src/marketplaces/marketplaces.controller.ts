@@ -9,6 +9,7 @@ import {
   BadRequestException,
   Logger,
   Res,
+  NotFoundException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import {
@@ -105,7 +106,6 @@ export class MarketplacesController {
     }
   }
 
-  @Get('oauth/callback/:marketplace')
   @Get('api/marketplace/callback/:marketplace')
   async handleOAuthCallback(
     @Param('marketplace') marketplace: string,
@@ -154,6 +154,14 @@ export class MarketplacesController {
     } catch (error) {
       this.logger.error(`OAuth callback error: ${error.message}`);
 
+      // Determine the appropriate error message based on the type of error
+      let errorMessage = 'An unexpected error occurred during the OAuth flow.';
+      if (error instanceof BadRequestException) {
+        errorMessage = error.message;
+      } else if (error instanceof NotFoundException) {
+        errorMessage = error.message;
+      }
+
       // Redirect the user to the mobile deep link with error parameters
       const config = this.marketplaceConfig.getMarketplaceConfig(
         marketplace as MarketplaceSlug,
@@ -163,7 +171,7 @@ export class MarketplacesController {
       mobileDeepLink.searchParams.append('marketplace', marketplace);
       mobileDeepLink.searchParams.append(
         'error',
-        encodeURIComponent(error.message),
+        encodeURIComponent(errorMessage),
       );
       return res.redirect(302, mobileDeepLink.toString());
     }
