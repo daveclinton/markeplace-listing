@@ -13,7 +13,7 @@ export class MarketplaceConfigService {
   private initializeMarketplaces(): Map<MarketplaceSlug, MarketplaceConfig> {
     const marketplaceMap = new Map<MarketplaceSlug, MarketplaceConfig>();
 
-    // const baseUrl = this.configService.get<string>('APP_URL');
+    const baseUrl = this.configService.get<string>('APP_URL');
 
     marketplaceMap.set('ebay', {
       id: 1,
@@ -32,9 +32,7 @@ export class MarketplaceConfigService {
         client_id: 'DavidCli-snaplist-SBX-6fe1f119b-85d7ecad',
         client_secret: 'SBX-fe1f119bb54f-101f-4b99-b803-5068',
         redirect_uri:
-          // 'https://snaplist-marketplace-api.onrender.com/api/v1/marketplaces/oauth/callback/ebay',
-          'http://localhost:8000/api/v1/marketplaces/oauth/callback/ebay',
-        // Updated scope for eBay - this includes basic required permissions
+          'https://snaplist-marketplace-api.onrender.com/api/v1/marketplaces/oauth/callback/ebay',
         scope:
           'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.marketing https://api.ebay.com/oauth/api_scope/sell.account',
         additional_params: {
@@ -44,29 +42,29 @@ export class MarketplaceConfigService {
         web_redirect_url: 'https://your-frontend-url.com/auth/callback',
       },
     });
-    // marketplaceMap.set('facebook', {
-    //   id: 2,
-    //   name: 'Facebook',
-    //   slug: 'facebook',
-    //   icon_url:
-    //     'https://cdn2.iconfinder.com/data/icons/social-media-2285/512/1_Facebook2_colored_svg-1024.png',
-    //   is_supported: true,
-    //   is_linked: false,
-    //   mobile_app: {
-    //     scheme: 'com.snaplist://auth/accept',
-    //   },
-    //   oauth: {
-    //     oauth_url: 'https://www.facebook.com/v12.0/dialog/oauth',
-    //     token_url: 'https://graph.facebook.com/v12.0/oauth/access_token',
-    //     client_id: this.configService.getOrThrow<string>('FACEBOOK_CLIENT_ID'),
-    //     client_secret: this.configService.getOrThrow<string>(
-    //       'FACEBOOK_CLIENT_SECRET',
-    //     ),
-    //     redirect_uri: `${baseUrl}/api/marketplace/callback/facebook`,
-    //     scope: 'catalog_management',
-    //     web_redirect_url: '',
-    //   },
-    // });
+    marketplaceMap.set('facebook', {
+      id: 2,
+      name: 'Facebook',
+      slug: 'facebook',
+      icon_url:
+        'https://cdn2.iconfinder.com/data/icons/social-media-2285/512/1_Facebook2_colored_svg-1024.png',
+      is_supported: true,
+      is_linked: false,
+      mobile_app: {
+        scheme: 'com.snaplist://auth/accept',
+      },
+      oauth: {
+        oauth_url: 'https://www.facebook.com/v12.0/dialog/oauth',
+        token_url: 'https://graph.facebook.com/v12.0/oauth/access_token',
+        client_id: this.configService.getOrThrow<string>('FACEBOOK_CLIENT_ID'),
+        client_secret: this.configService.getOrThrow<string>(
+          'FACEBOOK_CLIENT_SECRET',
+        ),
+        redirect_uri: `${baseUrl}/api/marketplace/callback/facebook`,
+        scope: 'catalog_management',
+        web_redirect_url: '',
+      },
+    });
 
     return marketplaceMap;
   }
