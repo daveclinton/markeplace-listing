@@ -175,47 +175,6 @@ export class MarketplacesService {
     }
   }
 
-  async getMarketplaceStatus(
-    marketplace: MarketplaceSlug,
-    userSupabaseId: string,
-  ): Promise<{
-    isLinked: boolean;
-    tokenStatus: 'valid' | 'expired' | 'none';
-    expiresAt?: Date;
-  }> {
-    const config = this.marketplaceConfig.getMarketplaceConfig(marketplace);
-    if (!config) {
-      throw new NotFoundException(`Marketplace ${marketplace} not found`);
-    }
-
-    const link = await this.userMarketplaceLinkRepo.findOne({
-      where: {
-        userSupabaseId,
-        marketplaceId: config.id,
-      },
-    });
-
-    if (!link) {
-      return {
-        isLinked: false,
-        tokenStatus: 'none',
-      };
-    }
-
-    const now = new Date();
-    const tokenStatus = !link.tokenExpiresAt
-      ? 'none'
-      : link.tokenExpiresAt > now
-        ? 'valid'
-        : 'expired';
-
-    return {
-      isLinked: link.isLinked,
-      tokenStatus,
-      expiresAt: link.tokenExpiresAt,
-    };
-  }
-
   async getUserIdFromState(state: string): Promise<string | null> {
     try {
       // Since the Redis implementation is commented out, let's use a temporary
