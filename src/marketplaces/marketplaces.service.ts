@@ -12,6 +12,7 @@ import * as crypto from 'crypto';
 import { UserMarketplaceLink } from './user.marketplace-link.enity';
 import { MarketplaceConfigService } from './marketplaces.config';
 import { MarketplaceConfig, MarketplaceSlug } from './marketplace.types';
+import { CacheService } from 'src/cache/cache.service';
 
 interface MarketplaceConfigWithOAuth extends MarketplaceConfig {
   oauth_url?: string;
@@ -25,12 +26,21 @@ export class MarketplacesService {
     @InjectRepository(UserMarketplaceLink)
     private readonly userMarketplaceLinkRepo: Repository<UserMarketplaceLink>,
     private readonly marketplaceConfig: MarketplaceConfigService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async getMarketplacesForUser(
     userSupabaseId: string,
   ): Promise<MarketplaceConfigWithOAuth[]> {
     try {
+      // Try to get from cache first
+      const cacheKey = `marketplaces:${userSupabaseId}`;
+      const cachedMarketplaces = await this.cacheService.get(cacheKey);
+
+      if (cachedMarketplaces) {
+        return cachedMarketplaces;
+      }
+
       const links = await this.userMarketplaceLinkRepo.find({
         where: { userSupabaseId },
       });
@@ -40,7 +50,6 @@ export class MarketplacesService {
           const link = links.find((l) => l.marketplaceId === marketplace.id);
           const isLinked = Boolean(link?.isLinked);
 
-          // Generate OAuth URL for supported and unlinked marketplaces
           let oauthUrl: string | undefined;
           if (marketplace.is_supported && !isLinked) {
             try {
@@ -63,6 +72,9 @@ export class MarketplacesService {
           };
         }),
       );
+
+      // Cache the results for 5 minutes
+      await this.cacheService.set(cacheKey, marketplaces, 300);
 
       return marketplaces;
     } catch (error) {
@@ -176,27 +188,15 @@ export class MarketplacesService {
 
   async getUserIdFromState(state: string): Promise<string | null> {
     try {
-      // Since the Redis implementation is commented out, let's use a temporary
-      // solution to extract the user ID from the state parameter directly
-      // In production, you should use Redis or another storage solution
       const stateKey = `oauth:state:${state}`;
-
-      console.log(stateKey);
-
-      // For debugging
-      this.logger.debug(`Attempting to retrieve user ID for state: ${state}`);
-
-      // TODO: Replace this with proper state storage/retrieval
-      // For now, we'll assume the state is valid and extract the user ID
-      // from the beginning of the hash (this is temporary and not secure)
+      const stateData = await this.cacheService.get(stateKey);
+      if (stateData && stateData.userSupabaseId) {
+        return stateData.userSupabaseId;
+      }
       const userIdMatch = state.match(
         /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/,
       );
-      if (userIdMatch) {
-        return userIdMatch[0];
-      }
-
-      return null;
+      return userIdMatch ? userIdMatch[0] : null;
     } catch (error) {
       this.logger.error('Error retrieving user ID from state:', error);
       return null;
@@ -266,14 +266,7 @@ export class MarketplacesService {
         userSupabaseId,
         createdAt: Date.now(),
       };
-      console.log(stateData, stateKey);
-
-      // await this.redis.set(
-      //   stateKey,
-      //   JSON.stringify(stateData),
-      //   'EX',
-      //   600, // 10 minutes
-      // );
+      await this.cacheService.set(stateKey, stateData, 600);
     } catch (error) {
       this.logger.error('Failed to store OAuth state', error);
       throw new BadRequestException('Unable to initiate OAuth flow');

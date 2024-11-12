@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { UsersModule } from './users/users.module';
 import { AppService } from './app.service';
 import { MarketplacesModule } from './marketplaces/marketplaces.module';
+import { CacheModuleLocal } from './cache/cache.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { MarketplacesModule } from './marketplaces/marketplaces.module';
     }),
     UsersModule,
     MarketplacesModule,
+    CacheModuleLocal,
   ],
   controllers: [AppController],
   providers: [AppService, Logger],
