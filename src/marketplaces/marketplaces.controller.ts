@@ -143,7 +143,7 @@ export class MarketplacesController {
     }
   }
 
-  @Get('marketplace/callback/:marketplace')
+  @Get('callback/:marketplace')
   async handleOAuthCallback(
     @Param('marketplace') marketplace: string,
     @Query('state') state: string,
