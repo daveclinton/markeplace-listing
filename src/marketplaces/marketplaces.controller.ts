@@ -178,43 +178,37 @@ export class MarketplacesController {
         );
       }
 
-      // Process the OAuth callback
       await this.marketplacesService.handleOAuthCallback(
         marketplace as MarketplaceSlug,
         callbackDto.code,
         callbackDto.userSupabaseId,
       );
 
-      // Get marketplace config
       const config = this.marketplaceConfig.getMarketplaceConfig(
         marketplace as MarketplaceSlug,
       );
 
-      // Build success URL for Expo app
-      const redirectUrl = new URL(config.mobile_app.scheme);
-      redirectUrl.searchParams.append('status', 'success');
-      redirectUrl.searchParams.append('marketplace', marketplace);
+      const mobileDeepLink = new URL(config.mobile_app.scheme);
+      mobileDeepLink.searchParams.append('status', 'success');
+      mobileDeepLink.searchParams.append('marketplace', marketplace);
 
-      // Redirect to Expo app
-      return res.redirect(302, redirectUrl.toString());
+      return res.redirect(302, mobileDeepLink.toString());
     } catch (error) {
       this.logger.error(`OAuth callback error: ${error.message}`);
 
-      // Get config for error redirect
       const config = this.marketplaceConfig.getMarketplaceConfig(
         marketplace as MarketplaceSlug,
       );
 
-      // Build error URL for Expo app
-      const redirectUrl = new URL(config.mobile_app.scheme);
-      redirectUrl.searchParams.append('status', 'error');
-      redirectUrl.searchParams.append('marketplace', marketplace);
-      redirectUrl.searchParams.append(
+      const mobileDeepLink = new URL(config.mobile_app.scheme);
+      mobileDeepLink.searchParams.append('status', 'error');
+      mobileDeepLink.searchParams.append('marketplace', marketplace);
+      mobileDeepLink.searchParams.append(
         'error',
         encodeURIComponent(error.message),
       );
 
-      return res.redirect(302, redirectUrl.toString());
+      return res.redirect(302, mobileDeepLink.toString());
     }
   }
 

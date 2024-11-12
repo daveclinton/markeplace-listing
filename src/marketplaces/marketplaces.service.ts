@@ -121,31 +121,10 @@ export class MarketplacesService {
     if (!config) {
       throw new NotFoundException(`Marketplace ${marketplace} not found`);
     }
-
-    // Generate state parameter for CSRF protection
     const state = this.generateState(userSupabaseId);
     await this.storeOAuthState(state, userSupabaseId);
 
-    // Base OAuth parameters
-    const params: Record<string, string> = {
-      client_id: config.oauth.client_id,
-      redirect_uri: config.oauth.redirect_uri,
-      scope: config.oauth.scope,
-      response_type: 'code',
-      state,
-    };
-
-    // Add marketplace-specific additional parameters
-    if (config.oauth.additional_params) {
-      Object.entries(config.oauth.additional_params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params[key] = value;
-        }
-      });
-    }
-
     if (marketplace === 'ebay') {
-      // For eBay, we need to construct the URL differently
       const params = new URLSearchParams({
         client_id: config.oauth.client_id,
         response_type: 'code',
@@ -154,20 +133,17 @@ export class MarketplacesService {
         state: state,
       });
 
-      const ruUrl = `${config.oauth.additional_params?.ru}?${params.toString()}`;
-
-      // Create the final URL parameters
-      const finalParams = new URLSearchParams({
-        SignIn: config.oauth.additional_params?.SignIn || '',
-        prompt: 'login',
-        ru: ruUrl,
-      });
-
-      return `${config.oauth.oauth_url}?${finalParams.toString()}`;
+      return `${config.oauth.oauth_url}?${params.toString()}`;
     }
+    const standardParams: Record<string, string> = {
+      client_id: config.oauth.client_id,
+      redirect_uri: config.oauth.redirect_uri,
+      scope: config.oauth.scope,
+      response_type: 'code',
+      state,
+    };
 
-    // For other marketplaces, use standard OAuth flow
-    return `${config.oauth.oauth_url}?${new URLSearchParams(params).toString()}`;
+    return `${config.oauth.oauth_url}?${new URLSearchParams(standardParams).toString()}`;
   }
 
   async handleOAuthCallback(
@@ -182,8 +158,6 @@ export class MarketplacesService {
 
     try {
       const tokenResponse = await this.exchangeCodeForToken(config, code);
-
-      // Save or update the marketplace link with the new tokens
       await this.userMarketplaceLinkRepo.save({
         userSupabaseId,
         marketplaceId: config.id,
@@ -252,25 +226,29 @@ export class MarketplacesService {
   }> {
     const params = new URLSearchParams({
       code,
-      client_id: config.oauth.client_id,
-      client_secret: config.oauth.client_secret,
       redirect_uri: config.oauth.redirect_uri,
       grant_type: 'authorization_code',
     });
+    if (config.oauth.scope) {
+      params.append('scope', config.oauth.scope);
+    }
+    const authHeader = `Basic ${Buffer.from(
+      `${config.oauth.client_id}:${config.oauth.client_secret}`,
+    ).toString('base64')}`;
 
     const response = await fetch(config.oauth.token_url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: authHeader,
       },
       body: params.toString(),
     });
-
     if (!response.ok) {
       const error = await response
         .json()
         .catch(() => ({ error: 'Unknown error' }));
-      throw new Error(`Token exchange failed: ${error.error}`);
+      throw new Error(`Token exchange failed: ${error.error || error}`);
     }
 
     return response.json();

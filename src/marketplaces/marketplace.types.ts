@@ -13,6 +13,7 @@ export interface OAuthConfig {
     ru?: string;
     [key: string]: string | undefined;
   };
+  web_redirect_url: string;
 }
 
 export interface MobileAppConfig {
