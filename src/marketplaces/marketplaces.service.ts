@@ -147,11 +147,13 @@ export class MarketplacesService {
   }
 
   async handleOAuthCallback(
-    marketplace: MarketplaceSlug,
+    marketplace: string,
     code: string,
     userSupabaseId: string,
   ): Promise<void> {
-    const config = this.marketplaceConfig.getMarketplaceConfig(marketplace);
+    const config = this.marketplaceConfig.getMarketplaceConfig(
+      marketplace as MarketplaceSlug,
+    );
     if (!config) {
       throw new NotFoundException(`Marketplace ${marketplace} not found`);
     }
@@ -167,10 +169,7 @@ export class MarketplacesService {
         tokenExpiresAt: new Date(Date.now() + tokenResponse.expires_in * 1000),
       });
     } catch (error) {
-      this.logger.error(
-        `Error handling OAuth callback for ${marketplace}: ${error.message}`,
-        error.stack,
-      );
+      console.log(error);
       throw new BadRequestException('Failed to complete OAuth flow');
     }
   }
@@ -280,7 +279,7 @@ export class MarketplacesService {
       throw new BadRequestException('Unable to initiate OAuth flow');
     }
   }
-  private async exchangeEbayCodeForToken(
+  async exchangeEbayCodeForToken(
     config: MarketplaceConfig,
     code: string,
   ): Promise<{

@@ -21,7 +21,7 @@ import {
 
 import { MarketplacesService } from './marketplaces.service';
 import { MarketplaceConfigService } from './marketplaces.config';
-import { LinkMarketplaceDto, OAuthCallbackDto } from './dto/marketplace.dto';
+import { LinkMarketplaceDto } from './dto/marketplace.dto';
 import {
   MarketplaceSlug,
   MarketplaceConfigWithOAuth,
@@ -106,10 +106,12 @@ export class MarketplacesController {
   }
 
   @Get('oauth/callback/:marketplace')
-  @ApiOperation({ summary: 'Handle OAuth callback and redirect to mobile app' })
+  @Get('api/marketplace/callback/:marketplace')
   async handleOAuthCallback(
     @Param('marketplace') marketplace: string,
-    @Query() callbackDto: OAuthCallbackDto,
+    @Query('state') state: string,
+    @Query('code') code: string,
+    @Query('expires_in') expiresIn: string,
     @Res() res: Response,
   ): Promise<void> {
     try {
@@ -123,13 +125,7 @@ export class MarketplacesController {
         );
       }
 
-      // Extract state from query parameters
-      const state = callbackDto.state;
-      if (!state) {
-        throw new BadRequestException('Missing state parameter');
-      }
-
-      // Retrieve user ID associated with state
+      // Extract user ID from the state parameter
       const userSupabaseId =
         await this.marketplacesService.getUserIdFromState(state);
       if (!userSupabaseId) {
@@ -137,31 +133,31 @@ export class MarketplacesController {
       }
 
       this.logger.debug(
-        `Processing OAuth callback for marketplace: ${marketplace}, code: ${callbackDto.code}`,
+        `Processing OAuth callback for marketplace: ${marketplace}, code: ${code}`,
       );
 
+      // Handle the OAuth callback
       await this.marketplacesService.handleOAuthCallback(
-        marketplace as MarketplaceSlug,
-        callbackDto.code,
+        marketplace,
+        code,
         userSupabaseId,
       );
 
+      // Redirect the user to the mobile deep link with success parameters
       const config = this.marketplaceConfig.getMarketplaceConfig(
         marketplace as MarketplaceSlug,
       );
-
       const mobileDeepLink = new URL(config.mobile_app.scheme);
       mobileDeepLink.searchParams.append('status', 'success');
       mobileDeepLink.searchParams.append('marketplace', marketplace);
-
       return res.redirect(302, mobileDeepLink.toString());
     } catch (error) {
       this.logger.error(`OAuth callback error: ${error.message}`);
 
+      // Redirect the user to the mobile deep link with error parameters
       const config = this.marketplaceConfig.getMarketplaceConfig(
         marketplace as MarketplaceSlug,
       );
-
       const mobileDeepLink = new URL(config.mobile_app.scheme);
       mobileDeepLink.searchParams.append('status', 'error');
       mobileDeepLink.searchParams.append('marketplace', marketplace);
@@ -169,7 +165,6 @@ export class MarketplacesController {
         'error',
         encodeURIComponent(error.message),
       );
-
       return res.redirect(302, mobileDeepLink.toString());
     }
   }
