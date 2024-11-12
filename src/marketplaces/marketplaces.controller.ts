@@ -155,6 +155,10 @@ export class MarketplacesController {
     this.logger.debug(
       `OAuth callback params - State: ${state}, Code: ${code}, ExpiresIn: ${expiresIn}`,
     );
+    this.logger.debug('OAuth Callback Debug Information:');
+    this.logger.debug(`Marketplace: ${marketplace}`);
+    this.logger.debug(`State: ${state}`);
+    this.logger.debug(`Code exists: ${!!code}`);
 
     try {
       this.logger.debug(`Verifying marketplace ${marketplace} support`);
