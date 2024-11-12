@@ -22,9 +22,9 @@ import { MarketplacesModule } from './marketplaces/marketplaces.module';
         username: configService.get<string>('SUPABASE_DB_USER'),
         password: configService.get<string>('SUPABASE_DB_PASSWORD'),
         database: configService.get<string>('SUPABASE_DB_NAME'),
-        ssl: {
-          rejectUnauthorized: true,
-        },
+        // ssl: {
+        //   rejectUnauthorized: true,
+        // },
         autoLoadEntities: true,
         synchronize: true,
       }),

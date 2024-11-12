@@ -43,7 +43,7 @@ View container logs using the following commands:
 ```bash
 # Follow all container logs
 docker-compose logs -f
-
+s
 # View specific service logs (e.g., app service)
 docker-compose logs -f app
 ```
