@@ -31,8 +31,7 @@ export class MarketplaceConfigService {
         token_url: 'https://api.sandbox.ebay.com/identity/v1/oauth2/token',
         client_id: 'DavidCli-snaplist-SBX-6fe1f119b-85d7ecad',
         client_secret: 'SBX-fe1f119bb54f-101f-4b99-b803-5068',
-        redirect_uri:
-          'https://snaplist-marketplace-api.onrender.com/api/v1/marketplaces/oauth/callback/ebay',
+        redirect_uri: `${baseUrl}/api/marketplace/callback/ebay`,
         scope:
           'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.marketing https://api.ebay.com/oauth/api_scope/sell.account',
         additional_params: {
