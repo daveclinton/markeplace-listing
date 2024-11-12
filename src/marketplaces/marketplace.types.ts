@@ -7,7 +7,14 @@ export interface OAuthConfig {
   client_secret: string;
   redirect_uri: string;
   scope: string;
+  additional_params?: {
+    SignIn?: string;
+    AppName?: string;
+    ru?: string;
+    [key: string]: string | undefined;
+  };
 }
+
 export interface MobileAppConfig {
   scheme: string;
 }

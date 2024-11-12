@@ -44,18 +44,10 @@ export class MarketplacesService {
           let oauthUrl: string | undefined;
           if (marketplace.is_supported && !isLinked) {
             try {
-              const state = this.generateState(userSupabaseId);
-              await this.storeOAuthState(state, userSupabaseId);
-
-              const params = new URLSearchParams({
-                client_id: marketplace.oauth.client_id,
-                redirect_uri: marketplace.oauth.redirect_uri,
-                scope: marketplace.oauth.scope,
-                response_type: 'code',
-                state,
-              });
-
-              oauthUrl = `${marketplace.oauth.oauth_url}?${params.toString()}`;
+              oauthUrl = await this.generateOAuthUrl(
+                marketplace.slug,
+                userSupabaseId,
+              );
             } catch (error) {
               this.logger.error(
                 `Error generating OAuth URL for marketplace ${marketplace.slug}`,
@@ -131,23 +123,51 @@ export class MarketplacesService {
     }
 
     // Generate state parameter for CSRF protection
-    const state = crypto
-      .createHash('sha256')
-      .update(`${userSupabaseId}-${Date.now()}`)
-      .digest('hex');
-
-    // Store state temporarily (you might want to use Redis or similar for this)
+    const state = this.generateState(userSupabaseId);
     await this.storeOAuthState(state, userSupabaseId);
 
-    const params = new URLSearchParams({
+    // Base OAuth parameters
+    const params: Record<string, string> = {
       client_id: config.oauth.client_id,
       redirect_uri: config.oauth.redirect_uri,
       scope: config.oauth.scope,
       response_type: 'code',
       state,
-    });
+    };
 
-    return `${config.oauth.oauth_url}?${params.toString()}`;
+    // Add marketplace-specific additional parameters
+    if (config.oauth.additional_params) {
+      Object.entries(config.oauth.additional_params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          params[key] = value;
+        }
+      });
+    }
+
+    if (marketplace === 'ebay') {
+      // For eBay, we need to construct the URL differently
+      const params = new URLSearchParams({
+        client_id: config.oauth.client_id,
+        response_type: 'code',
+        redirect_uri: config.oauth.redirect_uri,
+        scope: config.oauth.scope,
+        state: state,
+      });
+
+      const ruUrl = `${config.oauth.additional_params?.ru}?${params.toString()}`;
+
+      // Create the final URL parameters
+      const finalParams = new URLSearchParams({
+        SignIn: config.oauth.additional_params?.SignIn || '',
+        prompt: 'login',
+        ru: ruUrl,
+      });
+
+      return `${config.oauth.oauth_url}?${finalParams.toString()}`;
+    }
+
+    // For other marketplaces, use standard OAuth flow
+    return `${config.oauth.oauth_url}?${new URLSearchParams(params).toString()}`;
   }
 
   async handleOAuthCallback(

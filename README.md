@@ -59,3 +59,8 @@ docker-compose logs -f app
 - Use `--build` flag when dependencies change or during first-time setup
 - For regular usage, you can omit the `--build` flag
 - Production environment uses a separate configuration file: `docker-compose.prod.yml`
+
+
+
+
+
