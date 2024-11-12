@@ -50,6 +50,11 @@ export class OAuthCallbackDto {
   @IsOptional()
   @IsString()
   state?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  expires_in?: string;
 }
 
 export class GenerateOAuthUrlDto {

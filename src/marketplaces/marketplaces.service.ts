@@ -216,6 +216,35 @@ export class MarketplacesService {
     };
   }
 
+  async getUserIdFromState(state: string): Promise<string | null> {
+    try {
+      // Since the Redis implementation is commented out, let's use a temporary
+      // solution to extract the user ID from the state parameter directly
+      // In production, you should use Redis or another storage solution
+      const stateKey = `oauth:state:${state}`;
+
+      console.log(stateKey);
+
+      // For debugging
+      this.logger.debug(`Attempting to retrieve user ID for state: ${state}`);
+
+      // TODO: Replace this with proper state storage/retrieval
+      // For now, we'll assume the state is valid and extract the user ID
+      // from the beginning of the hash (this is temporary and not secure)
+      const userIdMatch = state.match(
+        /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/,
+      );
+      if (userIdMatch) {
+        return userIdMatch[0];
+      }
+
+      return null;
+    } catch (error) {
+      this.logger.error('Error retrieving user ID from state:', error);
+      return null;
+    }
+  }
+
   private async exchangeCodeForToken(
     config: MarketplaceConfig,
     code: string,
@@ -224,6 +253,11 @@ export class MarketplacesService {
     refresh_token?: string;
     expires_in: number;
   }> {
+    if (config.slug === 'ebay') {
+      return this.exchangeEbayCodeForToken(config, code);
+    }
+
+    // Original OAuth flow for other marketplaces
     const params = new URLSearchParams({
       code,
       redirect_uri: config.oauth.redirect_uri,
@@ -244,6 +278,7 @@ export class MarketplacesService {
       },
       body: params.toString(),
     });
+
     if (!response.ok) {
       const error = await response
         .json()
@@ -284,6 +319,63 @@ export class MarketplacesService {
     } catch (error) {
       this.logger.error('Failed to store OAuth state', error);
       throw new BadRequestException('Unable to initiate OAuth flow');
+    }
+  }
+  private async exchangeEbayCodeForToken(
+    config: MarketplaceConfig,
+    code: string,
+  ): Promise<{
+    access_token: string;
+    refresh_token?: string;
+    expires_in: number;
+  }> {
+    try {
+      const params = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: config.oauth.redirect_uri,
+      });
+
+      const authHeader = `Basic ${Buffer.from(
+        `${config.oauth.client_id}:${config.oauth.client_secret}`,
+      ).toString('base64')}`;
+
+      this.logger.debug(
+        `Exchanging code for token with eBay URL: ${config.oauth.token_url}`,
+      );
+      this.logger.debug(
+        `Auth header (partially masked): Basic ${authHeader.substring(6, 15)}...`,
+      );
+
+      const response = await fetch(config.oauth.token_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: authHeader,
+          Accept: 'application/json',
+        },
+        body: params.toString(),
+      });
+
+      const responseText = await response.text();
+      this.logger.debug(`eBay token response status: ${response.status}`);
+      this.logger.debug(`eBay token response: ${responseText}`);
+
+      if (!response.ok) {
+        throw new Error(`eBay token exchange failed: ${responseText}`);
+      }
+
+      const tokenData = JSON.parse(responseText);
+      return {
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
+        expires_in: parseInt(tokenData.expires_in, 10),
+      };
+    } catch (error) {
+      this.logger.error('Error exchanging eBay code for token:', error);
+      throw new BadRequestException(
+        `Failed to exchange eBay code for token: ${error.message}`,
+      );
     }
   }
 }

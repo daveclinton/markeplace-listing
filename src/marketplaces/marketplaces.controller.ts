@@ -159,7 +159,6 @@ export class MarketplacesController {
       throw error;
     }
   }
-
   @Get('oauth/callback/:marketplace')
   @ApiOperation({ summary: 'Handle OAuth callback and redirect to mobile app' })
   async handleOAuthCallback(
@@ -178,10 +177,27 @@ export class MarketplacesController {
         );
       }
 
+      // Extract state from query parameters
+      const state = callbackDto.state;
+      if (!state) {
+        throw new BadRequestException('Missing state parameter');
+      }
+
+      // Retrieve user ID associated with state
+      const userSupabaseId =
+        await this.marketplacesService.getUserIdFromState(state);
+      if (!userSupabaseId) {
+        throw new BadRequestException('Invalid state parameter');
+      }
+
+      this.logger.debug(
+        `Processing OAuth callback for marketplace: ${marketplace}, code: ${callbackDto.code}`,
+      );
+
       await this.marketplacesService.handleOAuthCallback(
         marketplace as MarketplaceSlug,
         callbackDto.code,
-        callbackDto.userSupabaseId,
+        userSupabaseId,
       );
 
       const config = this.marketplaceConfig.getMarketplaceConfig(

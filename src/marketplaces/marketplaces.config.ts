@@ -33,8 +33,13 @@ export class MarketplaceConfigService {
         client_secret: 'SBX-fe1f119bb54f-101f-4b99-b803-5068',
         redirect_uri:
           'https://snaplist-marketplace-api.onrender.com/api/v1/marketplaces/oauth/callback/ebay',
-        scope: 'https://api.ebay.com/oauth/api_scope',
-        additional_params: {},
+        // Updated scope for eBay - this includes basic required permissions
+        scope:
+          'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.marketing https://api.ebay.com/oauth/api_scope/sell.account',
+        additional_params: {
+          prompt: 'login',
+          prompt_type: 'login',
+        },
         web_redirect_url: 'https://your-frontend-url.com/auth/callback',
       },
     });
