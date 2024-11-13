@@ -148,17 +148,10 @@ export class MarketplacesController {
     @Param('marketplace') marketplace: string,
     @Query('state') state: string,
     @Query('code') code: string,
-    @Query('expires_in') expiresIn: string,
     @Res() res: Response,
   ): Promise<void> {
     this.logger.log(`Handling OAuth callback for marketplace: ${marketplace}`);
-    this.logger.debug(
-      `OAuth callback params - State: ${state}, Code: ${code}, ExpiresIn: ${expiresIn}`,
-    );
-    this.logger.debug('OAuth Callback Debug Information:');
-    this.logger.debug(`Marketplace: ${marketplace}`);
-    this.logger.debug(`State: ${state}`);
-    this.logger.debug(`Code exists: ${!!code}`);
+    this.logger.debug(`OAuth callback params - State: ${state}, Code: ${code}`);
 
     try {
       this.logger.debug(`Verifying marketplace ${marketplace} support`);
@@ -168,8 +161,11 @@ export class MarketplacesController {
         )
       ) {
         this.logger.warn(`Unsupported marketplace in callback: ${marketplace}`);
-        throw new BadRequestException(
-          `Marketplace ${marketplace} is not supported`,
+        return this.redirectToMobileApp(
+          res,
+          marketplace,
+          'error',
+          'Unsupported marketplace',
         );
       }
 
@@ -178,7 +174,12 @@ export class MarketplacesController {
         await this.marketplacesService.getUserIdFromState(state);
       if (!userSupabaseId) {
         this.logger.warn(`Invalid state parameter received: ${state}`);
-        throw new BadRequestException('Invalid state parameter');
+        return this.redirectToMobileApp(
+          res,
+          marketplace,
+          'error',
+          'Invalid state parameter',
+        );
       }
 
       this.logger.debug(
@@ -192,17 +193,7 @@ export class MarketplacesController {
       );
 
       this.logger.debug('Preparing success redirect');
-      const config = this.marketplaceConfig.getMarketplaceConfig(
-        marketplace as MarketplaceSlug,
-      );
-      const mobileDeepLink = new URL(config.mobile_app.scheme);
-      mobileDeepLink.searchParams.append('status', 'success');
-      mobileDeepLink.searchParams.append('marketplace', marketplace);
-
-      this.logger.log(
-        `Successfully processed OAuth callback. Redirecting to: ${mobileDeepLink.toString()}`,
-      );
-      return res.redirect(302, mobileDeepLink.toString());
+      return this.redirectToMobileApp(res, marketplace, 'success');
     } catch (error) {
       this.logger.error(
         `OAuth callback error for marketplace ${marketplace}: ${error.message}`,
@@ -219,19 +210,39 @@ export class MarketplacesController {
       }
 
       this.logger.debug('Preparing error redirect');
-      const config = this.marketplaceConfig.getMarketplaceConfig(
-        marketplace as MarketplaceSlug,
-      );
-      const mobileDeepLink = new URL(config.mobile_app.scheme);
-      mobileDeepLink.searchParams.append('status', 'error');
-      mobileDeepLink.searchParams.append('marketplace', marketplace);
+      return this.redirectToMobileApp(res, marketplace, 'error', errorMessage);
+    }
+  }
+
+  private redirectToMobileApp(
+    res: Response,
+    marketplace: string,
+    status: 'success' | 'error',
+    errorMessage?: string,
+  ): void {
+    const config = this.marketplaceConfig.getMarketplaceConfig(
+      marketplace as MarketplaceSlug,
+    );
+    if (!config) {
+      this.logger.error(`Marketplace config not found for ${marketplace}`);
+      res.status(500).send('Internal server error');
+      return;
+    }
+
+    const mobileDeepLink = new URL(config.mobile_app.scheme);
+    mobileDeepLink.searchParams.append('status', status);
+    mobileDeepLink.searchParams.append('marketplace', marketplace);
+
+    if (status === 'error' && errorMessage) {
       mobileDeepLink.searchParams.append(
         'error',
         encodeURIComponent(errorMessage),
       );
-
-      this.logger.log(`Redirecting to error URL: ${mobileDeepLink.toString()}`);
-      return res.redirect(302, mobileDeepLink.toString());
     }
+
+    this.logger.log(
+      `Redirecting to ${status} URL: ${mobileDeepLink.toString()}`,
+    );
+    return res.redirect(302, mobileDeepLink.toString());
   }
 }

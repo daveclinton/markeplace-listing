@@ -27,7 +27,8 @@ export class MarketplaceConfigService {
       is_supported: true,
       is_linked: false,
       mobile_app: {
-        scheme: 'com.snaplist://auth/accept',
+        scheme:
+          'com.snaplist://feed/new-marketplace?marketplace=ebay&connection={connection}',
       },
       oauth: {
         oauth_url: 'https://auth.sandbox.ebay.com/oauth2/authorize',
@@ -53,7 +54,8 @@ export class MarketplaceConfigService {
       is_supported: true,
       is_linked: false,
       mobile_app: {
-        scheme: 'com.snaplist://auth/accept',
+        scheme:
+          'com.snaplist://feed/new-marketplace?marketplace=facebook&connection={connection}',
       },
       oauth: {
         oauth_url: 'https://www.facebook.com/v12.0/dialog/oauth',
