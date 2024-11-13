@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+dist
+logs
+*.log
+.git
+.env.development.local
+
+.env.development.production
+
+.env.development.development
