@@ -58,10 +58,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: function (origin, callback) {
-      logger.debug(`Processing CORS request from origin: ${origin}`);
-
       if (!origin) {
-        logger.debug('No origin header (likely mobile app or direct request)');
         return callback(null, true);
       }
 
@@ -69,10 +66,8 @@ async function bootstrap() {
         allowedOrigins.includes(origin) ||
         origin.startsWith('com.snaplist://')
       ) {
-        logger.debug(`Origin allowed: ${origin}`);
         callback(null, true);
       } else {
-        logger.warn(`Blocked request from unauthorized origin: ${origin}`);
         callback(new Error('Not allowed by CORS'), false);
       }
     },

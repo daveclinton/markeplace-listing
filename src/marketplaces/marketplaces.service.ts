@@ -16,6 +16,11 @@ import { CacheService } from 'src/cache/cache.service';
 interface MarketplaceConfigWithOAuth extends MarketplaceConfig {
   oauth_url?: string;
 }
+interface StateData {
+  userSupabaseId: string;
+  timestamp: number;
+  nonce: string;
+}
 
 @Injectable()
 export class MarketplacesService {
@@ -246,31 +251,48 @@ export class MarketplacesService {
     }
   }
 
-  async getUserIdFromState(state: string): Promise<string | null> {
-    this.logger.log(`Getting user ID from state: ${state}`);
+  async getUserIdFromState(state: string): Promise<string> {
+    this.logger.log('Getting user ID from state');
+
     try {
+      // First try to get from cache
       const stateKey = `oauth:state:${state}`;
-      this.logger.debug(`Checking cache with key: ${stateKey}`);
-      const stateData = await this.cacheService.get(stateKey);
-      if (stateData && stateData.userSupabaseId) {
-        this.logger.debug('Found user ID in cache');
-        return stateData.userSupabaseId;
+      const cachedState = await this.cacheService.get(stateKey);
+
+      if (cachedState?.userSupabaseId) {
+        // Clear the used state from cache
+        await this.cacheService.delete(stateKey);
+        return cachedState.userSupabaseId;
       }
 
-      this.logger.debug('Cache miss, attempting to extract user ID from state');
-      const userIdMatch = state.match(
-        /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/,
+      // If not in cache, decrypt the state
+      const [ivHex, encryptedData] = state.split(':');
+
+      if (!ivHex || !encryptedData) {
+        throw new BadRequestException('Invalid state format');
+      }
+
+      const key = Buffer.from(
+        process.env.STATE_ENCRYPTION_KEY || crypto.randomBytes(32),
       );
-      const userId = userIdMatch ? userIdMatch[0] : null;
-      this.logger.debug(`Extracted user ID from state: ${userId}`);
-      return userId;
+      const iv = Buffer.from(ivHex, 'hex');
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+
+      let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+
+      const stateData: StateData = JSON.parse(decrypted);
+
+      // Verify timestamp is not too old (e.g., 10 minutes)
+      const maxAge = 10 * 60 * 1000; // 10 minutes in milliseconds
+      if (Date.now() - stateData.timestamp > maxAge) {
+        throw new BadRequestException('State has expired');
+      }
+
+      return stateData.userSupabaseId;
     } catch (error) {
-      this.logger.error('Error retrieving user ID from state:', error);
-      this.logger.error('State parameter:', state);
-      this.logger.error(
-        'Expected format: UUID (e.g. 12345678-abcd-1234-abcd-1234567890ab)',
-      );
-      return null;
+      this.logger.error('Error processing state:', error);
+      throw new BadRequestException('Invalid or expired state parameter');
     }
   }
 
@@ -324,13 +346,28 @@ export class MarketplacesService {
   }
 
   private generateState(userSupabaseId: string): string {
-    this.logger.debug(`Generating state for user: ${userSupabaseId}`);
-    return crypto
-      .createHash('sha256')
-      .update(
-        `${userSupabaseId}-${Date.now()}-${crypto.randomBytes(16).toString('hex')}`,
-      )
-      .digest('hex');
+    const stateData: StateData = {
+      userSupabaseId,
+      timestamp: Date.now(),
+      nonce: crypto.randomBytes(16).toString('hex'),
+    };
+
+    // Encrypt the state data
+    const key = Buffer.from(
+      process.env.STATE_ENCRYPTION_KEY || crypto.randomBytes(32),
+    );
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+
+    let encryptedState = cipher.update(
+      JSON.stringify(stateData),
+      'utf8',
+      'hex',
+    );
+    encryptedState += cipher.final('hex');
+
+    // Combine IV and encrypted data with a delimiter
+    return `${iv.toString('hex')}:${encryptedState}`;
   }
 
   private async storeOAuthState(
@@ -340,12 +377,7 @@ export class MarketplacesService {
     this.logger.debug(`Storing OAuth state for user: ${userSupabaseId}`);
     try {
       const stateKey = `oauth:state:${state}`;
-      const stateData = {
-        userSupabaseId,
-        createdAt: Date.now(),
-      };
-      await this.cacheService.set(stateKey, stateData, 600);
-      this.logger.debug('Successfully stored OAuth state');
+      await this.cacheService.set(stateKey, { userSupabaseId }, 600); // 10 minute expiry
     } catch (error) {
       this.logger.error('Failed to store OAuth state:', error);
       throw new BadRequestException('Unable to initiate OAuth flow');
