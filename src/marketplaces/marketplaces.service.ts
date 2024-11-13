@@ -266,6 +266,10 @@ export class MarketplacesService {
       return userId;
     } catch (error) {
       this.logger.error('Error retrieving user ID from state:', error);
+      this.logger.error('State parameter:', state);
+      this.logger.error(
+        'Expected format: UUID (e.g. 12345678-abcd-1234-abcd-1234567890ab)',
+      );
       return null;
     }
   }
