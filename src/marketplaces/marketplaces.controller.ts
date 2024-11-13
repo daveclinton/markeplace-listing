@@ -188,6 +188,7 @@ export class MarketplacesController {
         marketplace,
         code,
         userSupabaseId,
+        state,
       );
 
       this.logger.debug('Preparing success redirect');

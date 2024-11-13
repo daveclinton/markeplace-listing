@@ -73,7 +73,7 @@ async function bootstrap() {
         callback(null, true);
       } else {
         logger.warn(`Blocked request from unauthorized origin: ${origin}`);
-        callback(null, false);
+        callback(new Error('Not allowed by CORS'), false);
       }
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',

@@ -203,10 +203,20 @@ export class MarketplacesService {
     marketplace: string,
     code: string,
     userSupabaseId: string,
+    state: string,
   ): Promise<void> {
     this.logger.log(
       `Handling OAuth callback for marketplace ${marketplace} and user ${userSupabaseId}`,
     );
+    this.logger.log(`Handling OAuth callback for marketplace ${marketplace}`);
+
+    const retrievedUserId = await this.getUserIdFromState(state);
+    if (!retrievedUserId || retrievedUserId !== userSupabaseId) {
+      this.logger.error(
+        `State parameter mismatch. Expected user ID: ${userSupabaseId}, retrieved: ${retrievedUserId}`,
+      );
+      throw new BadRequestException('Invalid or expired state parameter');
+    }
     const config = this.marketplaceConfig.getMarketplaceConfig(
       marketplace as MarketplaceSlug,
     );
