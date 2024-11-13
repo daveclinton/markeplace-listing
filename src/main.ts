@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as compression from 'compression';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptot';
 import { WinstonModule } from 'nest-winston';
@@ -12,17 +12,80 @@ import { instance } from './common/logger/winston.logger';
 declare const module: any;
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger({ instance: instance }),
   });
 
-  app.use(helmet());
+  const allowedOrigins = [
+    'http://localhost:8000',
+    'http://localhost:3000',
+    'https://markeplace-listing.onrender.com',
+    'https://www.facebook.com',
+    'https://facebook.com',
+    'https://auth.ebay.com',
+    'https://www.ebay.com',
+    'https://api.ebay.com',
+    'com.snaplist://auth/accept',
+  ];
+
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: [`'self'`, 'https:', 'data:', 'com.snaplist:'],
+          connectSrc: [`'self'`, 'https:', 'com.snaplist:'],
+          styleSrc: [`'self'`, `'unsafe-inline'`],
+          imgSrc: [`'self'`, 'data:', 'https:'],
+          scriptSrc: [`'self'`, `'unsafe-inline'`, `'unsafe-eval'`],
+          frameSrc: [`'self'`, 'https:', 'com.snaplist:'],
+          formAction: [`'self'`, 'https:', 'com.snaplist:'],
+        },
+      },
+      referrerPolicy: { policy: 'no-referrer-when-downgrade' },
+    }),
+  );
 
   app.use(compression());
 
+  app.use((req, res, next) => {
+    logger.debug(`Request from origin: ${req.headers.origin}`);
+    next();
+  });
+
   app.enableCors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+    origin: function (origin, callback) {
+      logger.debug(`Processing CORS request from origin: ${origin}`);
+
+      if (!origin) {
+        logger.debug('No origin header (likely mobile app or direct request)');
+        return callback(null, true);
+      }
+
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.startsWith('com.snaplist://')
+      ) {
+        logger.debug(`Origin allowed: ${origin}`);
+        callback(null, true);
+      } else {
+        logger.warn(`Blocked request from unauthorized origin: ${origin}`);
+        callback(null, false);
+      }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: [
+      'Origin',
+      'X-Requested-With',
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'Access-Control-Allow-Origin',
+    ],
+    exposedHeaders: ['Access-Control-Allow-Origin'],
     credentials: true,
   });
 
@@ -58,11 +121,17 @@ async function bootstrap() {
 
   await app.listen(port, '0.0.0.0');
 
-  console.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log(
+    `Swagger documentation available at: http://localhost:${port}/docs`,
+  );
 
   if (module.hot) {
     module.hot.accept();
     module.hot.dispose(() => app.close());
   }
 }
-bootstrap();
+
+bootstrap().catch((error) => {
+  new Logger('Bootstrap').error('Failed to start application:', error);
+});
