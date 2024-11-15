@@ -146,8 +146,8 @@ export class MarketplacesController {
   @Get('callback/:marketplace')
   async handleOAuthCallback(
     @Param('marketplace') marketplace: string,
-    @Query('state') state: string,
     @Query('code') code: string,
+    @Query('redirect_state') state: string,
     @Res() res: Response,
   ): Promise<void> {
     this.logger.log(`Handling OAuth callback for marketplace: ${marketplace}`);
