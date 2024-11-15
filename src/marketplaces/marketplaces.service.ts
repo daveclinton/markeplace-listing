@@ -184,8 +184,7 @@ export class MarketplacesService {
     code: string,
     redirect_state: string,
   ): Promise<void> {
-    const userSupabaseId = redirect_state;
-    await this.processOAuthCallback(marketplace, code, userSupabaseId);
+    await this.processOAuthCallback(marketplace, code, redirect_state);
   }
 
   private async processOAuthCallback(
