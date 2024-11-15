@@ -224,7 +224,7 @@ export class MarketplacesService {
       this.logger.debug(
         `Processing OAuth callback for marketplace: ${marketplace}, user: ${userSupabaseId}`,
       );
-      await this.processOAuthCallback(marketplace, code, userSupabaseId, state);
+      await this.processOAuthCallback(marketplace, code, userSupabaseId);
     } catch (error) {
       this.logger.error(
         `OAuth callback error for marketplace ${marketplace}: ${error.message}`,
@@ -388,35 +388,14 @@ export class MarketplacesService {
     }
   }
 
-  private getURLParams(marketplace: string): string {
-    const config = this.marketplaceConfig.getMarketplaceConfig(
-      marketplace as MarketplaceSlug,
-    );
-    if (!config) {
-      throw new NotFoundException(`Marketplace ${marketplace} not found`);
-    }
-
-    const url = new URL(config.oauth.redirect_uri);
-    return url.search;
-  }
-
   private async processOAuthCallback(
     marketplace: string,
     code: string,
     userSupabaseId: string,
-    state: string,
   ): Promise<void> {
     this.logger.log(
       `Processing OAuth callback for marketplace ${marketplace} and user ${userSupabaseId}`,
     );
-
-    const retrievedUserId = await this.getUserIdFromState(state);
-    if (!retrievedUserId || retrievedUserId !== userSupabaseId) {
-      this.logger.error(
-        `State parameter mismatch. Expected user ID: ${userSupabaseId}, retrieved: ${retrievedUserId}`,
-      );
-      throw new BadRequestException('Invalid or expired state parameter');
-    }
 
     const config = this.marketplaceConfig.getMarketplaceConfig(
       marketplace as MarketplaceSlug,
@@ -445,5 +424,17 @@ export class MarketplacesService {
       this.logger.error('Failed to complete OAuth flow:', error);
       throw new BadRequestException('Failed to complete OAuth flow');
     }
+  }
+
+  private getURLParams(marketplace: string): string {
+    const config = this.marketplaceConfig.getMarketplaceConfig(
+      marketplace as MarketplaceSlug,
+    );
+    if (!config) {
+      throw new NotFoundException(`Marketplace ${marketplace} not found`);
+    }
+
+    const url = new URL(config.oauth.redirect_uri);
+    return url.search;
   }
 }
