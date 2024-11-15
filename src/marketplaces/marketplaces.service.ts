@@ -171,15 +171,15 @@ export class MarketplacesService {
       throw new NotFoundException(`Marketplace ${marketplace} not found`);
     }
 
-    const state = this.generateState(userSupabaseId);
+    const state = userSupabaseId;
     this.logger.debug(`Generated OAuth state: ${state}`);
 
     const params = new URLSearchParams({
       client_id: config.oauth.client_id,
       response_type: 'code',
-      redirect_uri: `${config.oauth.redirect_uri}?userId=${userSupabaseId}`,
+      redirect_uri: `${config.oauth.redirect_uri}`,
       scope: config.oauth.scope,
-      state: `${state}?userId=${userSupabaseId}`,
+      state: userSupabaseId,
     });
 
     if (config.oauth.additional_params) {
@@ -215,7 +215,7 @@ export class MarketplacesService {
       }
 
       const urlParams = new URLSearchParams(this.getURLParams(marketplace));
-      const userSupabaseId = urlParams.get('userId');
+      const userSupabaseId = urlParams.get('state');
       if (!userSupabaseId) {
         this.logger.warn(`No user ID found in the URL parameters`);
         throw new BadRequestException('Invalid or missing user ID');
@@ -326,31 +326,6 @@ export class MarketplacesService {
 
     this.logger.debug('Successfully exchanged code for token');
     return response.json();
-  }
-
-  private generateState(userSupabaseId: string): string {
-    const stateData: StateData = {
-      userSupabaseId,
-      timestamp: Date.now(),
-      nonce: crypto.randomBytes(16).toString('hex'),
-    };
-
-    // Encrypt the state data
-    const key = Buffer.from(
-      process.env.STATE_ENCRYPTION_KEY || crypto.randomBytes(32),
-    );
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-
-    let encryptedState = cipher.update(
-      JSON.stringify(stateData),
-      'utf8',
-      'hex',
-    );
-    encryptedState += cipher.final('hex');
-
-    // Combine IV and encrypted data with a delimiter
-    return `${iv.toString('hex')}:${encryptedState}`;
   }
 
   async exchangeEbayCodeForToken(
