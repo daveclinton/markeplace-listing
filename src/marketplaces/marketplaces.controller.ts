@@ -188,7 +188,6 @@ export class MarketplacesController {
       await this.marketplacesService.handleOAuthCallback(
         marketplace,
         code,
-        userSupabaseId,
         state,
       );
 
