@@ -156,24 +156,15 @@ export class MarketplacesService {
     marketplace: MarketplaceSlug,
     userSupabaseId: string,
   ): Promise<string> {
-    this.logger.log(
-      `Generating OAuth URL for marketplace ${marketplace} and user ${userSupabaseId}`,
-    );
     const config = this.marketplaceConfig.getMarketplaceConfig(marketplace);
-    if (!config) {
-      this.logger.error(`Marketplace config not found for ${marketplace}`);
-      throw new NotFoundException(`Marketplace ${marketplace} not found`);
-    }
-
     const state = userSupabaseId;
-    this.logger.debug(`Generated OAuth state: ${state}`);
 
     const params = new URLSearchParams({
       client_id: config.oauth.client_id,
       response_type: 'code',
       redirect_uri: `${config.oauth.redirect_uri}`,
       scope: config.oauth.scope,
-      state: userSupabaseId,
+      state: state,
     });
 
     if (config.oauth.additional_params) {
@@ -185,7 +176,6 @@ export class MarketplacesService {
     }
 
     const url = `${config.oauth.oauth_url}?${params.toString()}`;
-    this.logger.debug(`Generated OAuth URL: ${url}`);
     return url;
   }
 
@@ -194,46 +184,8 @@ export class MarketplacesService {
     code: string,
     redirect_state: string,
   ): Promise<void> {
-    this.logger.log(`Handling OAuth callback for marketplace: ${marketplace}`);
-    this.logger.debug(
-      `OAuth callback params - State: ${redirect_state}, Code: ${code}`,
-    );
-
-    try {
-      this.logger.debug(`Verifying marketplace ${marketplace} support`);
-      if (
-        !this.marketplaceConfig.isMarketplaceSupported(
-          marketplace as MarketplaceSlug,
-        )
-      ) {
-        this.logger.warn(`Unsupported marketplace in callback: ${marketplace}`);
-        throw new NotFoundException(`Marketplace ${marketplace} not found`);
-      }
-
-      const userSupabaseId = this.getUserIdFromState(redirect_state);
-      this.logger.debug(
-        `Processing OAuth callback for marketplace: ${marketplace}, user: ${userSupabaseId}`,
-      );
-      await this.processOAuthCallback(marketplace, code, userSupabaseId);
-    } catch (error) {
-      this.logger.error(
-        `OAuth callback error for marketplace ${marketplace}: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
-  private getUserIdFromState(state: string): string {
-    this.logger.log('Getting user ID from state');
-
-    try {
-      const userSupabaseId = state;
-      return userSupabaseId;
-    } catch (error) {
-      this.logger.error('Error processing state:', error);
-      throw new BadRequestException('Invalid or missing user ID');
-    }
+    const userSupabaseId = redirect_state;
+    await this.processOAuthCallback(marketplace, code, userSupabaseId);
   }
 
   private async processOAuthCallback(
@@ -241,49 +193,20 @@ export class MarketplacesService {
     code: string,
     userSupabaseId: string,
   ): Promise<void> {
-    this.logger.log(
-      `Processing OAuth callback for marketplace ${marketplace} and user ${userSupabaseId}`,
-    );
-
     const config = this.marketplaceConfig.getMarketplaceConfig(
       marketplace as MarketplaceSlug,
     );
-    if (!config) {
-      this.logger.error(`Marketplace config not found for ${marketplace}`);
-      throw new NotFoundException(`Marketplace ${marketplace} not found`);
-    }
 
-    try {
-      this.logger.debug('Exchanging code for token');
-      const tokenResponse = await this.exchangeCodeForToken(config, code);
-      this.logger.debug('Successfully exchanged code for token');
+    const tokenResponse = await this.exchangeCodeForToken(config, code);
 
-      this.logger.debug('Saving marketplace link with token');
-      await this.userMarketplaceLinkRepo.save({
-        userSupabaseId,
-        marketplaceId: config.id,
-        isLinked: true,
-        accessToken: tokenResponse.access_token,
-        refreshToken: tokenResponse.refresh_token,
-        tokenExpiresAt: new Date(Date.now() + tokenResponse.expires_in * 1000),
-      });
-      this.logger.log('Successfully completed OAuth flow');
-    } catch (error) {
-      this.logger.error('Failed to complete OAuth flow:', error);
-      throw new BadRequestException('Failed to complete OAuth flow');
-    }
-  }
-
-  private getURLParams(marketplace: string): string {
-    const config = this.marketplaceConfig.getMarketplaceConfig(
-      marketplace as MarketplaceSlug,
-    );
-    if (!config) {
-      throw new NotFoundException(`Marketplace ${marketplace} not found`);
-    }
-
-    const url = new URL(config.oauth.redirect_uri);
-    return url.search;
+    await this.userMarketplaceLinkRepo.save({
+      userSupabaseId,
+      marketplaceId: config.id,
+      isLinked: true,
+      accessToken: tokenResponse.access_token,
+      refreshToken: tokenResponse.refresh_token,
+      tokenExpiresAt: new Date(Date.now() + tokenResponse.expires_in * 1000),
+    });
   }
 
   private async exchangeCodeForToken(
