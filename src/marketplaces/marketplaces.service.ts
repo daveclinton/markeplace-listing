@@ -179,7 +179,7 @@ export class MarketplacesService {
       response_type: 'code',
       redirect_uri: `${config.oauth.redirect_uri}?userId=${userSupabaseId}`,
       scope: config.oauth.scope,
-      state: state,
+      state: `${state}?userId=${userSupabaseId}`,
     });
 
     if (config.oauth.additional_params) {
