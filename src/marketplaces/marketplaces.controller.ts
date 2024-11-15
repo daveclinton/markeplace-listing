@@ -169,22 +169,6 @@ export class MarketplacesController {
         );
       }
 
-      this.logger.debug(`Extracting user ID from state: ${state}`);
-      const userSupabaseId =
-        await this.marketplacesService.getUserIdFromState(state);
-      if (!userSupabaseId) {
-        this.logger.warn(`Invalid state parameter received: ${state}`);
-        return this.redirectToMobileApp(
-          res,
-          marketplace,
-          'error',
-          'Invalid state parameter',
-        );
-      }
-
-      this.logger.debug(
-        `Processing OAuth callback for marketplace: ${marketplace}, user: ${userSupabaseId}`,
-      );
       await this.marketplacesService.handleOAuthCallback(
         marketplace,
         code,
