@@ -4,8 +4,11 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../users/user.entity';
+import { MarketplaceConnectionStatusEnums } from './marketplace-connection-status.enum';
 
 @Entity('user_marketplace_links')
 export class UserMarketplaceLink {
@@ -18,8 +21,12 @@ export class UserMarketplaceLink {
   @Column()
   marketplaceId: number;
 
-  @Column({ default: false })
-  isLinked: boolean;
+  @Column({
+    type: 'enum',
+    enum: MarketplaceConnectionStatusEnums,
+    default: MarketplaceConnectionStatusEnums.DISCONNECTED,
+  })
+  connectionStatus: MarketplaceConnectionStatusEnums;
 
   @ManyToOne(() => User)
   @JoinColumn({
@@ -36,4 +43,16 @@ export class UserMarketplaceLink {
 
   @Column({ nullable: true })
   tokenExpiresAt: Date;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @Column({ nullable: true })
+  lastSyncAt: Date;
+
+  @Column({ nullable: true })
+  errorMessage: string;
 }

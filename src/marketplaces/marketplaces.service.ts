@@ -1,20 +1,16 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { UserMarketplaceLink } from './user.marketplace-link.enity';
 import { MarketplaceConfigService } from './marketplaces.config';
-import { MarketplaceConfig, MarketplaceSlug } from './marketplace.types';
+import {
+  MarketplaceConfig,
+  MarketplaceSlug,
+  MarketplaceStatus,
+} from './marketplace.types';
 import { CacheService } from 'src/cache/cache.service';
-
-interface MarketplaceConfigWithOAuth extends MarketplaceConfig {
-  oauth_url?: string;
-}
+import { MarketplaceConnectionStatusEnums } from './marketplace-connection-status.enum';
 
 @Injectable()
 export class MarketplacesService {
@@ -31,39 +27,33 @@ export class MarketplacesService {
 
   async getMarketplacesForUser(
     userSupabaseId: string,
-  ): Promise<MarketplaceConfigWithOAuth[]> {
+  ): Promise<MarketplaceStatus[]> {
     this.logger.log(`Fetching marketplaces for user: ${userSupabaseId}`);
     try {
       const cacheKey = `marketplaces:${userSupabaseId}`;
-      this.logger.debug(`Checking cache with key: ${cacheKey}`);
       const cachedMarketplaces = await this.cacheService.get(cacheKey);
 
       if (cachedMarketplaces) {
-        this.logger.debug('Retrieved marketplaces from cache');
         return cachedMarketplaces;
       }
 
-      this.logger.debug('Cache miss, fetching from database');
       const links = await this.userMarketplaceLinkRepo.find({
         where: { userSupabaseId },
       });
-      this.logger.debug(`Found ${links.length} marketplace links for user`);
 
       const marketplaces = await Promise.all(
         this.marketplaceConfig.getAllMarketplaces().map(async (marketplace) => {
-          this.logger.debug(`Processing marketplace: ${marketplace.slug}`);
           const link = links.find((l) => l.marketplaceId === marketplace.id);
-          const isLinked = Boolean(link?.isLinked);
-          this.logger.debug(
-            `Marketplace ${marketplace.slug} linked status: ${isLinked}`,
-          );
 
+          let connectionStatus = MarketplaceConnectionStatusEnums.DISCONNECTED;
           let oauthUrl: string | undefined;
-          if (marketplace.is_supported && !isLinked) {
+
+          if (!marketplace.is_supported) {
+            connectionStatus = MarketplaceConnectionStatusEnums.NOT_SUPPORTED;
+          } else if (link) {
+            connectionStatus = link.connectionStatus;
+          } else if (marketplace.is_supported) {
             try {
-              this.logger.debug(
-                `Generating OAuth URL for marketplace: ${marketplace.slug}`,
-              );
               oauthUrl = await this.generateOAuthUrl(
                 marketplace.slug,
                 userSupabaseId,
@@ -77,19 +67,16 @@ export class MarketplacesService {
           }
 
           return {
-            ...marketplace,
-            is_linked: isLinked,
+            marketplace,
+            connectionStatus,
+            lastSyncAt: link?.lastSyncAt,
+            errorMessage: link?.errorMessage,
             oauth_url: oauthUrl,
           };
         }),
       );
 
-      this.logger.debug(`Caching marketplaces for key: ${cacheKey}`);
       await this.cacheService.set(cacheKey, marketplaces, 300);
-
-      this.logger.log(
-        `Successfully fetched ${marketplaces.length} marketplaces for user`,
-      );
       return marketplaces;
     } catch (error) {
       this.logger.error(
@@ -100,55 +87,45 @@ export class MarketplacesService {
     }
   }
 
-  async linkMarketplace(
+  async updateMarketplaceStatus(
     userSupabaseId: string,
     marketplaceId: number,
-    link: boolean,
+    status: MarketplaceConnectionStatusEnums,
+    errorMessage?: string,
   ): Promise<void> {
     this.logger.log(
-      `${link ? 'Linking' : 'Unlinking'} marketplace ${marketplaceId} for user ${userSupabaseId}`,
+      `Updating marketplace ${marketplaceId} status to ${status} for user ${userSupabaseId}`,
     );
     try {
-      this.logger.debug('Checking for existing marketplace link');
-      const existingLink = await this.userMarketplaceLinkRepo.findOne({
+      const link = await this.userMarketplaceLinkRepo.findOne({
         where: { userSupabaseId, marketplaceId },
       });
 
-      if (existingLink) {
-        this.logger.debug(
-          `Found existing link with status: ${existingLink.isLinked}`,
-        );
-        if (existingLink.isLinked === link) {
-          this.logger.warn(
-            `Marketplace is already ${link ? 'linked' : 'unlinked'}`,
-          );
-          throw new BadRequestException(
-            `Marketplace is already ${link ? 'linked' : 'unlinked'}`,
-          );
-        }
-
-        existingLink.isLinked = link;
-        await this.userMarketplaceLinkRepo.save(existingLink);
-        this.logger.log('Successfully updated marketplace link');
-      } else if (link) {
-        this.logger.debug('Creating new marketplace link');
+      if (!link) {
         const newLink = this.userMarketplaceLinkRepo.create({
           userSupabaseId,
           marketplaceId,
-          isLinked: true,
+          connectionStatus: status,
+          errorMessage,
         });
         await this.userMarketplaceLinkRepo.save(newLink);
-        this.logger.log('Successfully created new marketplace link');
       } else {
-        this.logger.warn('Attempted to unlink non-existent marketplace link');
-        throw new NotFoundException('Marketplace link not found');
+        link.connectionStatus = status;
+        link.errorMessage = errorMessage;
+        if (status === MarketplaceConnectionStatusEnums.ACTIVE) {
+          link.lastSyncAt = new Date();
+        }
+        await this.userMarketplaceLinkRepo.save(link);
       }
+
+      // Clear cache
+      await this.cacheService.delete(`marketplaces:${userSupabaseId}`);
     } catch (error) {
       this.logger.error(
-        `Error ${link ? 'linking' : 'unlinking'} marketplace: ${error.message}`,
+        `Error updating marketplace status: ${error.message}`,
         error.stack,
       );
-      throw error;
+      throw new BadRequestException('Failed to update marketplace status');
     }
   }
 
@@ -196,16 +173,27 @@ export class MarketplacesService {
       marketplace as MarketplaceSlug,
     );
 
-    const tokenResponse = await this.exchangeCodeForToken(config, code);
+    try {
+      const tokenResponse = await this.exchangeCodeForToken(config, code);
 
-    await this.userMarketplaceLinkRepo.save({
-      userSupabaseId,
-      marketplaceId: config.id,
-      isLinked: true,
-      accessToken: tokenResponse.access_token,
-      refreshToken: tokenResponse.refresh_token,
-      tokenExpiresAt: new Date(Date.now() + tokenResponse.expires_in * 1000),
-    });
+      await this.userMarketplaceLinkRepo.save({
+        userSupabaseId,
+        marketplaceId: config.id,
+        connectionStatus: MarketplaceConnectionStatusEnums.ACTIVE,
+        accessToken: tokenResponse.access_token,
+        refreshToken: tokenResponse.refresh_token,
+        tokenExpiresAt: new Date(Date.now() + tokenResponse.expires_in * 1000),
+        lastSyncAt: new Date(),
+      });
+    } catch (error) {
+      await this.updateMarketplaceStatus(
+        userSupabaseId,
+        config.id,
+        MarketplaceConnectionStatusEnums.DISCONNECTED,
+        error.message,
+      );
+      throw error;
+    }
   }
 
   private async exchangeCodeForToken(

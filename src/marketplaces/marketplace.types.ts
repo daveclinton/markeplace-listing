@@ -1,3 +1,5 @@
+import { MarketplaceConnectionStatusEnums } from './marketplace-connection-status.enum';
+
 export type MarketplaceSlug = 'ebay' | 'facebook' | string;
 
 export interface OAuthConfig {
@@ -37,7 +39,9 @@ export interface MarketplaceConfigWithOAuth extends MarketplaceConfig {
 }
 
 export interface MarketplaceStatus {
-  isLinked: boolean;
-  tokenStatus: 'valid' | 'expired' | 'none';
-  expiresAt?: Date;
+  marketplace: MarketplaceConfig;
+  connectionStatus: MarketplaceConnectionStatusEnums;
+  lastSyncAt?: Date;
+  errorMessage?: string;
+  oauth_url?: string;
 }
