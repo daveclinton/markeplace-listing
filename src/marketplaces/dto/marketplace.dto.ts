@@ -7,6 +7,7 @@ import {
   IsUUID,
 } from 'class-validator';
 import { MarketplaceSlug } from '../marketplace.types';
+import { MarketplaceConnectionStatusEnums } from '../marketplace-connection-status.enum';
 
 export class LinkMarketplaceDto {
   @ApiProperty({
@@ -70,4 +71,18 @@ export class GenerateOAuthUrlDto {
   })
   @IsUUID()
   userSupabaseId: string;
+}
+
+export class UpdateMarketplaceStatusDto {
+  @ApiProperty({
+    enum: MarketplaceConnectionStatusEnums,
+    description: 'The new status for the marketplace connection',
+  })
+  @IsEnum(MarketplaceConnectionStatusEnums)
+  status: MarketplaceConnectionStatusEnums;
+
+  @ApiProperty({ required: false, description: 'Error message if any' })
+  @IsOptional()
+  @IsString()
+  errorMessage?: string;
 }

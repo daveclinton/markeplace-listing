@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Param,
   Query,
@@ -10,6 +9,7 @@ import {
   Logger,
   Res,
   NotFoundException,
+  Patch,
 } from '@nestjs/common';
 import { Response } from 'express';
 import {
@@ -22,11 +22,9 @@ import {
 
 import { MarketplacesService } from './marketplaces.service';
 import { MarketplaceConfigService } from './marketplaces.config';
-import { LinkMarketplaceDto } from './dto/marketplace.dto';
-import {
-  MarketplaceSlug,
-  MarketplaceConfigWithOAuth,
-} from './marketplace.types';
+import { UpdateMarketplaceStatusDto } from './dto/marketplace.dto';
+import { MarketplaceSlug, MarketplaceResponse } from './marketplace.types';
+import { MarketplaceConnectionStatusEnums } from './marketplace-connection-status.enum';
 
 @ApiTags('marketplaces')
 @Controller('marketplaces')
@@ -42,7 +40,9 @@ export class MarketplacesController {
   }
 
   @Get(':userSupabaseId')
-  @ApiOperation({ summary: 'Get user marketplaces' })
+  @ApiOperation({
+    summary: 'Get user marketplaces with their connection status',
+  })
   @ApiParam({
     name: 'userSupabaseId',
     description: 'Supabase user ID',
@@ -50,11 +50,11 @@ export class MarketplacesController {
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Returns list of user marketplaces',
+    description: 'Returns list of user marketplaces with their status',
   })
   async getMarketplacesForUser(
     @Param('userSupabaseId') userSupabaseId: string,
-  ): Promise<MarketplaceConfigWithOAuth[]> {
+  ): Promise<MarketplaceResponse[]> {
     this.logger.log(`Getting marketplaces for user: ${userSupabaseId}`);
     try {
       const marketplaces =
@@ -72,71 +72,46 @@ export class MarketplacesController {
     }
   }
 
-  @Post(':userSupabaseId/link')
-  @ApiOperation({ summary: 'Link/unlink marketplace' })
+  @Patch(':userSupabaseId/marketplace/:marketplaceId/status')
+  @ApiOperation({ summary: 'Update marketplace connection status' })
   @ApiParam({
     name: 'userSupabaseId',
     description: 'Supabase user ID',
     type: String,
   })
+  @ApiParam({
+    name: 'marketplaceId',
+    description: 'Marketplace ID',
+    type: Number,
+  })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Marketplace linked/unlinked successfully',
+    description: 'Marketplace status updated successfully',
   })
-  async linkMarketplace(
+  async updateMarketplaceStatus(
     @Param('userSupabaseId') userSupabaseId: string,
-    @Body() linkDto: LinkMarketplaceDto,
+    @Param('marketplaceId') marketplaceId: number,
+    @Body() updateDto: UpdateMarketplaceStatusDto,
   ): Promise<{ status: number; message: string }> {
     this.logger.log(
-      `Attempting to ${
-        linkDto.link ? 'link' : 'unlink'
-      } marketplace ${linkDto.marketplace} for user ${userSupabaseId}`,
+      `Updating marketplace ${marketplaceId} status to ${updateDto.status} for user ${userSupabaseId}`,
     );
 
     try {
-      this.logger.debug(
-        `Checking if marketplace ${linkDto.marketplace} is supported`,
-      );
-      if (!this.marketplaceConfig.isMarketplaceSupported(linkDto.marketplace)) {
-        this.logger.warn(
-          `Attempt to link unsupported marketplace: ${linkDto.marketplace}`,
-        );
-        throw new BadRequestException(
-          `Marketplace ${linkDto.marketplace} is not supported`,
-        );
-      }
-
-      this.logger.debug(
-        `Getting config for marketplace ${linkDto.marketplace}`,
-      );
-      const config = this.marketplaceConfig.getMarketplaceConfig(
-        linkDto.marketplace,
-      );
-
-      await this.marketplacesService.linkMarketplace(
+      await this.marketplacesService.updateMarketplaceStatus(
         userSupabaseId,
-        config.id,
-        linkDto.link,
-      );
-
-      const message = linkDto.link
-        ? 'Marketplace linked'
-        : 'Marketplace unlinked';
-      this.logger.log(
-        `Successfully ${
-          linkDto.link ? 'linked' : 'unlinked'
-        } marketplace ${linkDto.marketplace} for user ${userSupabaseId}`,
+        marketplaceId,
+        updateDto.status,
+        updateDto.errorMessage,
       );
 
       return {
         status: HttpStatus.OK,
-        message,
+        message: `Marketplace status updated to ${updateDto.status}`,
       };
     } catch (error) {
       this.logger.error(
-        `Error ${linkDto.link ? 'linking' : 'unlinking'} marketplace ${
-          linkDto.marketplace
-        } for user ${userSupabaseId}: ${error.message}`,
+        `Error updating marketplace status: ${error.message}`,
         error.stack,
       );
       throw error;
@@ -144,6 +119,12 @@ export class MarketplacesController {
   }
 
   @Get('callback/:marketplace')
+  @ApiOperation({ summary: 'Handle OAuth callback from marketplaces' })
+  @ApiParam({
+    name: 'marketplace',
+    description: 'Marketplace slug',
+    type: String,
+  })
   async handleOAuthCallback(
     @Param('marketplace') marketplace: string,
     @Query('code') code: string,
@@ -166,8 +147,18 @@ export class MarketplacesController {
           marketplace,
           'error',
           'Unsupported marketplace',
+          MarketplaceConnectionStatusEnums.NOT_SUPPORTED,
         );
       }
+
+      const config = this.marketplaceConfig.getMarketplaceConfig(
+        marketplace as MarketplaceSlug,
+      );
+      await this.marketplacesService.updateMarketplaceStatus(
+        state, // state contains userSupabaseId
+        config.id,
+        MarketplaceConnectionStatusEnums.PENDING,
+      );
 
       await this.marketplacesService.handleOAuthCallback(
         marketplace,
@@ -176,7 +167,13 @@ export class MarketplacesController {
       );
 
       this.logger.debug('Preparing success redirect');
-      return this.redirectToMobileApp(res, marketplace, 'success');
+      return this.redirectToMobileApp(
+        res,
+        marketplace,
+        'success',
+        undefined,
+        MarketplaceConnectionStatusEnums.ACTIVE,
+      );
     } catch (error) {
       this.logger.error(
         `OAuth callback error for marketplace ${marketplace}: ${error.message}`,
@@ -186,14 +183,28 @@ export class MarketplacesController {
       let errorMessage = 'An unexpected error occurred during the OAuth flow.';
       if (error instanceof BadRequestException) {
         errorMessage = error.message;
-        this.logger.debug(`BadRequestException: ${error.message}`);
       } else if (error instanceof NotFoundException) {
         errorMessage = error.message;
-        this.logger.debug(`NotFoundException: ${error.message}`);
       }
 
+      const config = this.marketplaceConfig.getMarketplaceConfig(
+        marketplace as MarketplaceSlug,
+      );
+      await this.marketplacesService.updateMarketplaceStatus(
+        state, // state contains userSupabaseId
+        config.id,
+        MarketplaceConnectionStatusEnums.DISCONNECTED,
+        errorMessage,
+      );
+
       this.logger.debug('Preparing error redirect');
-      return this.redirectToMobileApp(res, marketplace, 'error', errorMessage);
+      return this.redirectToMobileApp(
+        res,
+        marketplace,
+        'error',
+        errorMessage,
+        MarketplaceConnectionStatusEnums.DISCONNECTED,
+      );
     }
   }
 
@@ -202,6 +213,7 @@ export class MarketplacesController {
     marketplace: string,
     status: 'success' | 'error',
     errorMessage?: string,
+    connectionStatus?: MarketplaceConnectionStatusEnums,
   ): void {
     const config = this.marketplaceConfig.getMarketplaceConfig(
       marketplace as MarketplaceSlug,
@@ -215,6 +227,10 @@ export class MarketplacesController {
     const mobileDeepLink = new URL(config.mobile_app.scheme);
     mobileDeepLink.searchParams.append('status', status);
     mobileDeepLink.searchParams.append('marketplace', marketplace);
+
+    if (connectionStatus) {
+      mobileDeepLink.searchParams.append('connectionStatus', connectionStatus);
+    }
 
     if (status === 'error' && errorMessage) {
       mobileDeepLink.searchParams.append(

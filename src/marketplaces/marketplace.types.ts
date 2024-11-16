@@ -45,3 +45,11 @@ export interface MarketplaceStatus {
   errorMessage?: string;
   oauth_url?: string;
 }
+
+export interface MarketplaceResponse {
+  marketplace: MarketplaceConfig;
+  connectionStatus: MarketplaceConnectionStatusEnums;
+  lastSyncAt?: Date;
+  errorMessage?: string;
+  oauth_url?: string;
+}
