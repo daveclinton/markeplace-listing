@@ -233,16 +233,56 @@ export class MarketplacesService {
     try {
       const tokenResponse = await this.exchangeCodeForToken(config, code);
 
-      await this.userMarketplaceLinkRepo.save({
-        userSupabaseId,
-        marketplaceId: config.id,
+      // First try to find an existing record
+      const existingLink = await this.userMarketplaceLinkRepo.findOne({
+        where: {
+          userSupabaseId,
+          marketplaceId: config.id,
+        },
+      });
+
+      const tokenData = {
         connectionStatus: MarketplaceConnectionStatusEnums.ACTIVE,
         accessToken: tokenResponse.access_token,
         refreshToken: tokenResponse.refresh_token,
         tokenExpiresAt: new Date(Date.now() + tokenResponse.expires_in * 1000),
         lastSyncAt: new Date(),
-      });
+        errorMessage: null,
+      };
+
+      if (existingLink) {
+        // Update existing record
+        this.logger.debug(
+          `Updating existing marketplace link for user ${userSupabaseId} and marketplace ${config.id}`,
+        );
+
+        await this.userMarketplaceLinkRepo.update(
+          {
+            userSupabaseId,
+            marketplaceId: config.id,
+          },
+          tokenData,
+        );
+      } else {
+        // Create new record
+        this.logger.debug(
+          `Creating new marketplace link for user ${userSupabaseId} and marketplace ${config.id}`,
+        );
+
+        await this.userMarketplaceLinkRepo.save({
+          userSupabaseId,
+          marketplaceId: config.id,
+          ...tokenData,
+        });
+      }
+
+      await this.cacheService.delete(`marketplaces:${userSupabaseId}`);
     } catch (error) {
+      this.logger.error(
+        `Error processing OAuth callback for marketplace ${marketplace}:`,
+        error.stack,
+      );
+
       await this.updateMarketplaceStatus(
         userSupabaseId,
         config.id,

@@ -19,7 +19,7 @@ async function bootstrap() {
   });
 
   const allowedOrigins = [
-    'http://localhost:8000',
+    'http://localhost:3000',
     'http://localhost:3000',
     'https://markeplace-listing.onrender.com',
     'https://www.facebook.com',
@@ -128,7 +128,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = process.env.PORT ?? 8000;
+  const port = process.env.PORT ?? 3000;
 
   await app.listen(port, '0.0.0.0');
 

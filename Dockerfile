@@ -37,7 +37,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/configuration.ts ./
 
 # Expose the port your app runs on
-EXPOSE 8000
+EXPOSE 3000
 
 # Start the application
 CMD ["node", "dist/main"]
