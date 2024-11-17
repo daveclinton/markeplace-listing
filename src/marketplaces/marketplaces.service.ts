@@ -96,36 +96,79 @@ export class MarketplacesService {
     this.logger.log(
       `Updating marketplace ${marketplaceId} status to ${status} for user ${userSupabaseId}`,
     );
+
     try {
-      const link = await this.userMarketplaceLinkRepo.findOne({
+      const marketplace = this.marketplaceConfig
+        .getAllMarketplaces()
+        .find((m) => m.id === marketplaceId);
+
+      if (!marketplace) {
+        this.logger.error(
+          `Marketplace with id ${marketplaceId} not found in config`,
+        );
+        throw new BadRequestException(
+          `Marketplace with id ${marketplaceId} not found`,
+        );
+      }
+      let link = await this.userMarketplaceLinkRepo.findOne({
         where: { userSupabaseId, marketplaceId },
       });
 
-      if (!link) {
-        const newLink = this.userMarketplaceLinkRepo.create({
-          userSupabaseId,
-          marketplaceId,
-          connectionStatus: status,
-          errorMessage,
-        });
-        await this.userMarketplaceLinkRepo.save(newLink);
-      } else {
-        link.connectionStatus = status;
-        link.errorMessage = errorMessage;
-        if (status === MarketplaceConnectionStatusEnums.ACTIVE) {
-          link.lastSyncAt = new Date();
+      try {
+        if (!link) {
+          link = this.userMarketplaceLinkRepo.create({
+            userSupabaseId,
+            marketplaceId,
+            connectionStatus: status,
+            errorMessage,
+          });
+          this.logger.debug(
+            `Creating new marketplace link for user ${userSupabaseId} and marketplace ${marketplaceId}`,
+          );
+        } else {
+          link.connectionStatus = status;
+          link.errorMessage = errorMessage;
+          if (status === MarketplaceConnectionStatusEnums.ACTIVE) {
+            link.lastSyncAt = new Date();
+          }
+          this.logger.debug(
+            `Updating existing marketplace link for user ${userSupabaseId} and marketplace ${marketplaceId}`,
+          );
         }
-        await this.userMarketplaceLinkRepo.save(link);
-      }
 
-      // Clear cache
-      await this.cacheService.delete(`marketplaces:${userSupabaseId}`);
+        await this.userMarketplaceLinkRepo.save(link);
+        await this.cacheService.delete(`marketplaces:${userSupabaseId}`);
+
+        this.logger.debug(
+          `Successfully updated status to ${status} for marketplace ${marketplaceId} and user ${userSupabaseId}`,
+        );
+      } catch (dbError) {
+        this.logger.error(
+          `Database error while updating marketplace link: ${dbError.message}`,
+          dbError.stack,
+        );
+
+        if (dbError.code === '23503') {
+          throw new BadRequestException(
+            'Invalid user ID or marketplace ID. Please ensure both exist.',
+          );
+        }
+
+        throw new BadRequestException(
+          `Failed to update marketplace status: ${dbError.message}`,
+        );
+      }
     } catch (error) {
       this.logger.error(
         `Error updating marketplace status: ${error.message}`,
         error.stack,
       );
-      throw new BadRequestException('Failed to update marketplace status');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `Failed to update marketplace status: ${error.message}`,
+      );
     }
   }
 

@@ -155,7 +155,7 @@ export class MarketplacesController {
         marketplace as MarketplaceSlug,
       );
       await this.marketplacesService.updateMarketplaceStatus(
-        state, // state contains userSupabaseId
+        state,
         config.id,
         MarketplaceConnectionStatusEnums.PENDING,
       );

@@ -51,7 +51,7 @@ export class MarketplaceConfigService {
       slug: 'facebook',
       icon_url:
         'https://cdn2.iconfinder.com/data/icons/social-media-2285/512/1_Facebook2_colored_svg-1024.png',
-      is_supported: false,
+      is_supported: true,
       is_linked: false,
       mobile_app: {
         scheme:
