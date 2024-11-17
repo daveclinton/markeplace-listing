@@ -3,11 +3,12 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as compression from 'compression';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, HttpStatus } from '@nestjs/common';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptot';
 import { WinstonModule } from 'nest-winston';
 import { instance } from './common/logger/winston.logger';
+import { HttpService } from '@nestjs/axios';
 
 declare const module: any;
 
@@ -101,6 +102,18 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api/v1');
+
+  const httpService = new HttpService();
+
+  httpService.axiosRef.interceptors.response.use(
+    (response) => {
+      return response;
+    },
+    (error) => {
+      // eslint-disable-next-line
+      if (error.response.status === HttpStatus.NOT_MODIFIED) return error;
+    },
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
