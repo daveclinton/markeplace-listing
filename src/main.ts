@@ -28,7 +28,7 @@ async function bootstrap() {
     'https://www.ebay.com',
     'https://api.ebay.com',
     'com.snaplist://auth/accept',
-    'https://8e29-41-212-41-122.ngrok-free.app',
+    'https://8acd-41-212-41-122.ngrok-free.app',
   ];
 
   app.use(
