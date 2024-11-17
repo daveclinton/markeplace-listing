@@ -6,7 +6,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { UserMarketplaceLink } from 'src/marketplaces/user.marketplace-link.enity';
+import { UserMarketplaceLink } from '../marketplaces/user.marketplace-link.entity';
 
 @Entity('users')
 export class User {

@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { UserMarketplaceLink } from './user.marketplace-link.enity';
+import { UserMarketplaceLink } from './user.marketplace-link.entity';
 import { MarketplaceConfigService } from './marketplaces.config';
 import {
   MarketplaceConfig,
@@ -98,6 +98,7 @@ export class MarketplacesService {
     );
 
     try {
+      // Validate marketplace exists in config
       const marketplace = this.marketplaceConfig
         .getAllMarketplaces()
         .find((m) => m.id === marketplaceId);
@@ -110,33 +111,46 @@ export class MarketplacesService {
           `Marketplace with id ${marketplaceId} not found`,
         );
       }
-      let link = await this.userMarketplaceLinkRepo.findOne({
-        where: { userSupabaseId, marketplaceId },
-      });
 
       try {
+        // Find existing record
+        let link = await this.userMarketplaceLinkRepo.findOne({
+          where: { userSupabaseId, marketplaceId },
+        });
+
+        // Prepare update data
+        const updateData = {
+          connectionStatus: status,
+          errorMessage,
+          ...(status === MarketplaceConnectionStatusEnums.ACTIVE && {
+            lastSyncAt: new Date(),
+          }),
+        };
+
         if (!link) {
+          // Create new record if none exists
+          this.logger.debug(
+            `No existing link found. Creating new marketplace link for user ${userSupabaseId} and marketplace ${marketplaceId}`,
+          );
+
           link = this.userMarketplaceLinkRepo.create({
             userSupabaseId,
             marketplaceId,
-            connectionStatus: status,
-            errorMessage,
+            ...updateData,
           });
-          this.logger.debug(
-            `Creating new marketplace link for user ${userSupabaseId} and marketplace ${marketplaceId}`,
-          );
         } else {
-          link.connectionStatus = status;
-          link.errorMessage = errorMessage;
-          if (status === MarketplaceConnectionStatusEnums.ACTIVE) {
-            link.lastSyncAt = new Date();
-          }
+          // Update existing record
           this.logger.debug(
             `Updating existing marketplace link for user ${userSupabaseId} and marketplace ${marketplaceId}`,
           );
+
+          Object.assign(link, updateData);
         }
 
+        // Save the record
         await this.userMarketplaceLinkRepo.save(link);
+
+        // Clear cache after successful update
         await this.cacheService.delete(`marketplaces:${userSupabaseId}`);
 
         this.logger.debug(
