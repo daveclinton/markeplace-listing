@@ -20,8 +20,12 @@ import {
 } from '@nestjs/swagger';
 import { ImageSearchQueryDto } from './dto/image-search.dto';
 import { ImagesService } from './images.service';
-import { ProductSearchResponse } from './interfaces/image-search.interface';
+import {
+  ImageSearchDto,
+  ProductSearchResponse,
+} from './interfaces/image-search.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { GoogleReverseImageSearchResponse } from './dto/google-reverse-image-search.interface';
 
 @ApiTags('Images')
 @Controller('images')
@@ -75,6 +79,7 @@ export class ImagesController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Successfully performed reverse image search',
+    type: GoogleReverseImageSearchResponse,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -89,26 +94,23 @@ export class ImagesController {
     description: 'Image search service unavailable',
   })
   async searchByImage(
-    @UploadedFile() file?: Express.Multer.File,
-    @Body('imageUrl') imageUrl?: string,
-    @Body('maxResults') maxResults: number = 10,
-  ) {
+    @UploadedFile() file: Express.Multer.File,
+    @Body() searchDto: ImageSearchDto,
+  ): Promise<GoogleReverseImageSearchResponse> {
     const startTime = Date.now();
     try {
-      this.logger.debug('Processing reverse image search request', {
-        hasFile: !!file,
-        hasUrl: !!imageUrl,
-        maxResults,
-      });
-
-      const results = await this.imageSearchService.searchByImage({
-        imageFile: file,
-        imageUrl,
-      });
+      if (!file && !searchDto.imageUrl) {
+        throw new BadRequestException(
+          'Either an image file or image URL must be provided',
+        );
+      }
+      if (file) {
+        searchDto.imageFile = file;
+      }
+      const results = await this.imageSearchService.searchByImage(searchDto);
 
       const duration = Date.now() - startTime;
       this.logger.debug(`Reverse image search completed in ${duration}ms`);
-
       return results;
     } catch (error) {
       const duration = Date.now() - startTime;

@@ -38,9 +38,26 @@ interface GoogleShoppingResponse {
   };
 }
 
+interface GoogleReverseImageSearchResponse {
+  search_metadata: {
+    status: string;
+    id: string;
+  };
+  image_results: Array<{
+    title: string;
+    link: string;
+    source: string;
+    thumbnail: string;
+    // Add other relevant fields based on your needs
+  }>;
+}
+
 @Injectable()
 export class ImagesService {
   private readonly logger = new Logger(ImagesService.name);
+  private readonly SEARCH_TIMEOUT = 10000; // 10 seconds
+  private readonly MAX_RETRIES = 2;
+  private readonly RETRY_DELAY = 1000; // 1 second
 
   constructor(
     private cacheService: CacheService,
@@ -62,10 +79,11 @@ export class ImagesService {
   private validateConfig(): void {
     const requiredConfigs = [
       'RAPID_API_KEY',
-      'GOOGLE_LENS_HOST',
       'CLOUDINARY_CLOUD_NAME',
       'CLOUDINARY_API_KEY',
       'CLOUDINARY_API_SECRET',
+      'SERPI_API_KEY',
+      'SERPI_API_BASE_URL',
     ];
 
     const missingConfigs = requiredConfigs.filter(
@@ -279,18 +297,72 @@ export class ImagesService {
     }
   }
 
-  async searchByImage(searchDto: ImageSearchDto): Promise<unknown> {
+  private async performGoogleReverseImageSearch(
+    imageUrl: string,
+  ): Promise<GoogleReverseImageSearchResponse> {
+    const serpApiKey = this.configService.get<string>('SERPI_API_KEY');
+    const serpApiBaseUrl = this.configService.get<string>('SERPI_API_BASE_URL');
+    try {
+      const params = new URLSearchParams({
+        engine: 'google_reverse_image',
+        image_url: imageUrl,
+        api_key: serpApiKey,
+        safe: 'active',
+        hl: 'en',
+      });
+
+      const response = await firstValueFrom(
+        this.httpService.get<GoogleReverseImageSearchResponse>(
+          `${serpApiBaseUrl}?${params.toString()}`,
+          {
+            headers: {
+              Accept: 'application/json',
+            },
+            timeout: 10000, // 10 second timeout
+          },
+        ),
+      );
+
+      if (response.data.search_metadata.status !== 'Success') {
+        throw new Error(
+          `Search failed: ${JSON.stringify(response.data.search_metadata)}`,
+        );
+      }
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(
+        'Google Reverse Image Search failed:',
+        error.response?.data || error.message,
+      );
+
+      if (error.response?.status) {
+        throw new HttpException(
+          'Reverse image search failed: ' +
+            (error.response.data?.message || 'External API error'),
+          error.response.status,
+        );
+      }
+
+      throw new HttpException(
+        'Reverse image search failed',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async searchByImage(
+    searchDto: ImageSearchDto,
+  ): Promise<GoogleReverseImageSearchResponse> {
     const startTime = Date.now();
     let imageUrl: string;
+
     try {
       if (searchDto.imageFile) {
         this.validateImage(searchDto.imageFile);
         const uploadResult = await this.uploadToCloudinary(searchDto.imageFile);
         imageUrl = uploadResult.secure_url;
-
         this.logger.debug(`Image uploaded to Cloudinary: ${imageUrl}`);
-
-        return imageUrl;
       } else if (searchDto.imageUrl) {
         imageUrl = searchDto.imageUrl;
       } else {
@@ -299,6 +371,13 @@ export class ImagesService {
           HttpStatus.BAD_REQUEST,
         );
       }
+      const searchResults =
+        await this.performGoogleReverseImageSearch(imageUrl);
+
+      const duration = Date.now() - startTime;
+      this.logger.debug(`Image search completed in ${duration}ms`);
+
+      return searchResults;
     } catch (error) {
       const duration = Date.now() - startTime;
       if (error instanceof HttpException) {
@@ -307,6 +386,10 @@ export class ImagesService {
       this.logger.error(
         `Unexpected error in image search after ${duration}ms: ${error instanceof Error ? error.message : 'Unknown error'}`,
         error instanceof Error ? error.stack : undefined,
+      );
+      throw new HttpException(
+        'Image search failed',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
