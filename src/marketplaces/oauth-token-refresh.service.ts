@@ -40,7 +40,6 @@ export class OAuthTokenRefreshService {
       throw new BadRequestException('Marketplace connection not found');
     }
 
-    // Check if token expires in the next 5 minutes
     const expiresInFiveMinutes = new Date(Date.now() + 5 * 60 * 1000);
     if (link.tokenExpiresAt && link.tokenExpiresAt < expiresInFiveMinutes) {
       await this.refreshToken(link, config);
