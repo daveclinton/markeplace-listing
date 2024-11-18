@@ -9,13 +9,13 @@ import { MarketplacesController } from './marketplaces.controller';
 import { CacheModuleLocal } from 'src/cache/cache.module';
 import { OAuthTokenRefreshService } from './oauth-token-refresh.service';
 import { TokenRefreshScheduler } from './token-refresh-scheduler';
-import { ScheduleModule } from '@nestjs/schedule';
+// import { ScheduleModule } from '@nestjs/schedule';
 import { MarketplaceTokenHelper } from './marketplace-token-helper';
 
 @Module({
   imports: [
     ConfigModule,
-    ScheduleModule.forRoot(),
+    // ScheduleModule.forRoot(),
     TypeOrmModule.forFeature([UserMarketplaceLink]),
     CacheModuleLocal,
   ],
