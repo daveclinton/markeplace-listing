@@ -39,3 +39,19 @@ export interface ProductSearchResponse {
   page: number;
   limit: number;
 }
+export interface CloudinaryUploadResponse {
+  secure_url: string;
+  public_id: string;
+  format: string;
+  width: number;
+  height: number;
+  bytes: number;
+  resource_type: string;
+  created_at: string;
+  asset_id: string;
+}
+
+export interface ImageSearchDto {
+  imageUrl?: string;
+  imageFile?: Express.Multer.File;
+}

@@ -6,6 +6,11 @@ import { ProductSearchQueryDto } from './dto/product-search.dto';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
+import {
+  CloudinaryUploadResponse,
+  ImageSearchDto,
+} from './interfaces/image-search.interface';
+import { v2 as cloudinary } from 'cloudinary';
 
 interface GoogleShoppingProduct {
   product_id: string;
@@ -43,6 +48,35 @@ export class ImagesService {
     private readonly configService: ConfigService,
   ) {
     this.logger.log('ImagesService initialized');
+    this.initializeCloudinary();
+    this.validateConfig();
+  }
+  private initializeCloudinary(): void {
+    cloudinary.config({
+      cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
+      api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
+      api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET'),
+    });
+  }
+
+  private validateConfig(): void {
+    const requiredConfigs = [
+      'RAPID_API_KEY',
+      'GOOGLE_LENS_HOST',
+      'CLOUDINARY_CLOUD_NAME',
+      'CLOUDINARY_API_KEY',
+      'CLOUDINARY_API_SECRET',
+    ];
+
+    const missingConfigs = requiredConfigs.filter(
+      (config) => !this.configService.get<string>(config),
+    );
+
+    if (missingConfigs.length > 0) {
+      throw new Error(
+        `Missing required configuration: ${missingConfigs.join(', ')}`,
+      );
+    }
   }
 
   async searchProducts(
@@ -184,6 +218,96 @@ export class ImagesService {
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
+    }
+  }
+
+  private async uploadToCloudinary(
+    file: Express.Multer.File,
+  ): Promise<CloudinaryUploadResponse> {
+    try {
+      const base64File = file.buffer.toString('base64');
+      const dataUri = `data:${file.mimetype};base64,${base64File}`;
+      return await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload(
+          dataUri,
+          {
+            folder: 'product-search',
+            resource_type: 'image',
+            transformation: [
+              { quality: 'auto:good' },
+              { fetch_format: 'auto' },
+            ],
+          },
+          (error, result) => {
+            if (error) {
+              this.logger.error('Cloudinary upload failed:', error);
+              reject(
+                new HttpException(
+                  'Image upload failed',
+                  HttpStatus.INTERNAL_SERVER_ERROR,
+                ),
+              );
+            } else {
+              resolve(result as unknown as CloudinaryUploadResponse);
+            }
+          },
+        );
+      });
+    } catch (error) {
+      this.logger.error('Error uploading to Cloudinary:', error);
+      throw new HttpException(
+        'Image upload failed',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  private validateImage(imageFile: Express.Multer.File) {
+    const maxSize = 5 * 1024 * 1024;
+    if (imageFile.size > maxSize) {
+      throw new HttpException(
+        'Image file too large. Maximum size is 5MB',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(imageFile.mimetype)) {
+      throw new HttpException(
+        'Invalid file type. Allowed types: JPEG, PNG, WEBP',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  async searchByImage(searchDto: ImageSearchDto): Promise<unknown> {
+    const startTime = Date.now();
+    let imageUrl: string;
+    try {
+      if (searchDto.imageFile) {
+        this.validateImage(searchDto.imageFile);
+        const uploadResult = await this.uploadToCloudinary(searchDto.imageFile);
+        imageUrl = uploadResult.secure_url;
+
+        this.logger.debug(`Image uploaded to Cloudinary: ${imageUrl}`);
+
+        return imageUrl;
+      } else if (searchDto.imageUrl) {
+        imageUrl = searchDto.imageUrl;
+      } else {
+        throw new HttpException(
+          'Either imageUrl or imageFile must be provided',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      this.logger.error(
+        `Unexpected error in image search after ${duration}ms: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error instanceof Error ? error.stack : undefined,
+      );
     }
   }
 }
