@@ -11,6 +11,7 @@ import {
 } from './marketplace.types';
 import { CacheService } from 'src/cache/cache.service';
 import { MarketplaceConnectionStatusEnums } from './marketplace-connection-status.enum';
+import { OAuthTokenRefreshService } from './oauth-token-refresh.service';
 
 @Injectable()
 export class MarketplacesService {
@@ -21,6 +22,7 @@ export class MarketplacesService {
     private readonly userMarketplaceLinkRepo: Repository<UserMarketplaceLink>,
     private readonly marketplaceConfig: MarketplaceConfigService,
     private readonly cacheService: CacheService,
+    private readonly oauthTokenRefresh: OAuthTokenRefreshService,
   ) {
     this.logger.log('MarketplacesService initialized');
   }
@@ -128,7 +130,6 @@ export class MarketplacesService {
         };
 
         if (!link) {
-          // Create new record if none exists
           this.logger.debug(
             `No existing link found. Creating new marketplace link for user ${userSupabaseId} and marketplace ${marketplaceId}`,
           );
@@ -139,18 +140,13 @@ export class MarketplacesService {
             ...updateData,
           });
         } else {
-          // Update existing record
           this.logger.debug(
             `Updating existing marketplace link for user ${userSupabaseId} and marketplace ${marketplaceId}`,
           );
 
           Object.assign(link, updateData);
         }
-
-        // Save the record
         await this.userMarketplaceLinkRepo.save(link);
-
-        // Clear cache after successful update
         await this.cacheService.delete(`marketplaces:${userSupabaseId}`);
 
         this.logger.debug(
@@ -400,5 +396,34 @@ export class MarketplacesService {
         `Failed to exchange eBay code for token: ${error.message}`,
       );
     }
+  }
+
+  async getActiveMarketplaceLink(
+    userSupabaseId: string,
+    marketplaceId: number,
+  ): Promise<UserMarketplaceLink> {
+    const link = await this.userMarketplaceLinkRepo.findOne({
+      where: {
+        userSupabaseId,
+        marketplaceId,
+        connectionStatus: MarketplaceConnectionStatusEnums.ACTIVE,
+      },
+    });
+
+    if (!link) {
+      throw new BadRequestException(
+        'Marketplace connection not found or inactive',
+      );
+    }
+
+    const marketplace = this.marketplaceConfig
+      .getAllMarketplaces()
+      .find((m) => m.id === marketplaceId);
+    await this.oauthTokenRefresh.refreshTokenIfNeeded(
+      userSupabaseId,
+      marketplace.slug,
+    );
+
+    return link;
   }
 }
