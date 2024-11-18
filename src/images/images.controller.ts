@@ -9,7 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   Body,
-  // HttpException,
+  HttpException,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -21,12 +21,11 @@ import {
 import { ImageSearchQueryDto } from './dto/image-search.dto';
 import { ImagesService } from './images.service';
 import {
-  // GoogleReverseImageSearchResponse,
+  GoogleReverseImageSearchResponse,
   ImageSearchDto,
   ProductSearchResponse,
 } from './interfaces/image-search.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Timeout } from '@nestjs/schedule';
 
 @ApiTags('Images')
 @Controller('images')
@@ -56,7 +55,6 @@ export class ImagesController {
   }
 
   @Post('reverse-image-search')
-  @Timeout(60000)
   @UseInterceptors(FileInterceptor('image'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
@@ -97,26 +95,36 @@ export class ImagesController {
   async searchByImage(
     @UploadedFile() file: Express.Multer.File,
     @Body() searchDto: ImageSearchDto,
-  ) {
+  ): Promise<GoogleReverseImageSearchResponse> {
     const startTime = Date.now();
-
-    if (!file && !searchDto.imageUrl) {
-      throw new BadRequestException('Image file or URL required');
-    }
-
     try {
-      const results = await this.imageSearchService.searchByImage({
-        ...searchDto,
-        imageFile: file,
-      });
+      if (!file && !searchDto.imageUrl) {
+        throw new BadRequestException(
+          'Either an image file or image URL must be provided',
+        );
+      }
+      if (file) {
+        searchDto.imageFile = file;
+      }
+      const results = await this.imageSearchService.searchByImage(searchDto);
 
       const duration = Date.now() - startTime;
-      this.logger.debug(`Reverse image search in ${duration}ms`);
-
+      this.logger.debug(`Reverse image search completed in ${duration}ms`);
+      console.log(results);
       return results;
     } catch (error) {
-      this.logger.error('Image search failed', error);
-      throw new BadRequestException('Image search processing error');
+      const duration = Date.now() - startTime;
+      this.logger.error(
+        `Error in reverse image search after ${duration}ms: ${error.message}`,
+        error.stack,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        'Failed to process reverse image search request',
+      );
     }
   }
 }

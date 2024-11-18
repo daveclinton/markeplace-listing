@@ -400,9 +400,21 @@ export class ImagesService {
     let imageUrl: string;
 
     try {
+      // Validate and upload image first if an image file is provided
       if (searchDto.imageFile) {
         this.validateImage(searchDto.imageFile);
+
+        // Await Cloudinary upload before continuing
         const uploadResult = await this.uploadToCloudinary(searchDto.imageFile);
+
+        // Only proceed if upload is successful
+        if (!uploadResult || !uploadResult.secure_url) {
+          throw new HttpException(
+            'Image upload to Cloudinary failed',
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        }
+
         imageUrl = uploadResult.secure_url;
         this.logger.debug(`Image uploaded to Cloudinary: ${imageUrl}`);
       } else if (searchDto.imageUrl) {
@@ -413,6 +425,7 @@ export class ImagesService {
           HttpStatus.BAD_REQUEST,
         );
       }
+
       const searchResults =
         await this.performGoogleReverseImageSearch(imageUrl);
 
