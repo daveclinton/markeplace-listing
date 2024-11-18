@@ -55,3 +55,56 @@ export interface ImageSearchDto {
   imageUrl?: string;
   imageFile?: Express.Multer.File;
 }
+
+interface SearchMetadata {
+  id: string;
+  status: string;
+  json_endpoint: string;
+  created_at: string;
+  processed_at: string;
+  google_reverse_image_url: string;
+  raw_html_file: string;
+  total_time_taken: number;
+}
+
+interface SearchParameters {
+  engine: string;
+  image_url: string;
+  google_domain: string;
+  device: string;
+}
+
+interface SearchInformation {
+  organic_results_state: string;
+  query_displayed: string;
+  total_results: number;
+  time_taken_displayed: number;
+}
+
+interface ImageSize {
+  title: string;
+  link: string;
+  serpapi_link: string;
+}
+
+interface ImageResult {
+  position: number;
+  title: string;
+  link: string;
+  redirect_link: string;
+  displayed_link: string;
+  favicon?: string;
+  snippet?: string;
+  snippet_highlighted_words?: string[];
+  source: string;
+  thumbnail?: string;
+  date?: string;
+}
+
+export interface GoogleReverseImageSearchResponse {
+  search_metadata: SearchMetadata;
+  search_parameters: SearchParameters;
+  search_information: SearchInformation;
+  image_sizes: ImageSize[];
+  image_results: ImageResult[];
+}

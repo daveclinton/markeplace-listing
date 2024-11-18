@@ -8,9 +8,11 @@ import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import {
   CloudinaryUploadResponse,
+  GoogleReverseImageSearchResponse,
   ImageSearchDto,
 } from './interfaces/image-search.interface';
 import { v2 as cloudinary } from 'cloudinary';
+import { getJson } from 'serpapi';
 
 interface GoogleShoppingProduct {
   product_id: string;
@@ -36,20 +38,6 @@ interface GoogleShoppingResponse {
   data: {
     products: GoogleShoppingProduct[];
   };
-}
-
-interface GoogleReverseImageSearchResponse {
-  search_metadata: {
-    status: string;
-    id: string;
-  };
-  image_results: Array<{
-    title: string;
-    link: string;
-    source: string;
-    thumbnail: string;
-    // Add other relevant fields based on your needs
-  }>;
 }
 
 @Injectable()
@@ -300,49 +288,103 @@ export class ImagesService {
   private async performGoogleReverseImageSearch(
     imageUrl: string,
   ): Promise<GoogleReverseImageSearchResponse> {
-    const serpApiKey = this.configService.get<string>('SERPI_API_KEY');
-    const serpApiBaseUrl = this.configService.get<string>('SERPI_API_BASE_URL');
+    // const serpApiKey = this.configService.get<string>('SERPI_API_KEY');
+
     try {
-      const params = new URLSearchParams({
-        engine: 'google_reverse_image',
-        image_url: imageUrl,
-        api_key: serpApiKey,
-        safe: 'active',
-        hl: 'en',
+      this.logger.debug('Initiating reverse image search for URL:', imageUrl);
+      this.logger.debug('Initiating reverse image search for URL:', imageUrl);
+      console.log('Full imageUrl details:', {
+        url: imageUrl,
+        type: typeof imageUrl,
+        length: imageUrl?.length,
+        isValid: /^https?:\/\//.test(imageUrl),
       });
 
-      const response = await firstValueFrom(
-        this.httpService.get<GoogleReverseImageSearchResponse>(
-          `${serpApiBaseUrl}?${params.toString()}`,
+      return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(
+            new HttpException(
+              'Image search request timed out',
+              HttpStatus.REQUEST_TIMEOUT,
+            ),
+          );
+        }, 60000);
+        getJson(
           {
-            headers: {
-              Accept: 'application/json',
-            },
-            timeout: 10000, // 10 second timeout
+            api_key:
+              '9e6aecc058a37f55d45f3d2bd63cee9bafeed9373b83ffddff833ed3cb71b85b',
+            engine: 'google_reverse_image',
+            google_domain: 'google.com',
+            image_url: imageUrl,
+            safe: 'active',
+            hl: 'en',
           },
-        ),
-      );
+          (json) => {
+            clearTimeout(timeoutId);
+            // Handle API errors
+            if (json.error) {
+              this.logger.error('Google Reverse Image Search API error:', {
+                errorMessage: json.error,
+                url: imageUrl,
+              });
+              return reject(
+                new HttpException(
+                  `Reverse image search API error: ${json.error}`,
+                  HttpStatus.BAD_GATEWAY,
+                ),
+              );
+            }
 
-      if (response.data.search_metadata.status !== 'Success') {
-        throw new Error(
-          `Search failed: ${JSON.stringify(response.data.search_metadata)}`,
+            // Explicit check for no results
+            if (!json.image_results || json.image_results.length === 0) {
+              this.logger.warn('No image results found for search', {
+                searchId: json.search_metadata?.id,
+                imageUrl,
+              });
+              return reject(
+                new HttpException(
+                  "Google Reverse Image hasn't returned any results for this query",
+                  HttpStatus.NOT_FOUND,
+                ),
+              );
+            }
+
+            // Log successful response metadata
+            this.logger.debug('Search completed successfully', {
+              searchId: json.search_metadata?.id,
+              totalResults: json.search_information?.total_results,
+              processingTime: json.search_metadata?.total_time_taken,
+              resultCount: json.image_results.length,
+            });
+
+            resolve({
+              search_metadata: json.search_metadata,
+              search_parameters: json.search_parameters,
+              search_information: json.search_information,
+              image_sizes: json.image_sizes,
+              image_results: json.image_results.map((result) => ({
+                position: result.position,
+                title: result.title,
+                link: result.link,
+                redirect_link: result.redirect_link,
+                displayed_link: result.displayed_link,
+                favicon: result.favicon,
+                snippet: result.snippet,
+                snippet_highlighted_words: result.snippet_highlighted_words,
+                source: result.source,
+                thumbnail: result.thumbnail,
+                date: result.date,
+              })),
+            });
+          },
         );
-      }
-
-      return response.data;
+      });
     } catch (error) {
-      this.logger.error(
-        'Google Reverse Image Search failed:',
-        error.response?.data || error.message,
-      );
-
-      if (error.response?.status) {
-        throw new HttpException(
-          'Reverse image search failed: ' +
-            (error.response.data?.message || 'External API error'),
-          error.response.status,
-        );
-      }
+      this.logger.error('Unexpected error in reverse image search:', {
+        errorMessage: error.message,
+        url: imageUrl,
+        errorStack: error.stack,
+      });
 
       throw new HttpException(
         'Reverse image search failed',
