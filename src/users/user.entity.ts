@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserMarketplaceLink } from '../marketplaces/user.marketplace-link.entity';
+import { Product } from 'src/products/entities/product.entity';
 
 @Entity('users')
 export class User {
@@ -33,4 +34,7 @@ export class User {
 
   @OneToMany(() => UserMarketplaceLink, (marketplace) => marketplace.user)
   marketplaces: UserMarketplaceLink[];
+
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[];
 }
