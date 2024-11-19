@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { MarketplacesModule } from './marketplaces/marketplaces.module';
 import { CacheModuleLocal } from './cache/cache.module';
 import { ImagesModule } from './images/images.module';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ImagesModule } from './images/images.module';
     MarketplacesModule,
     CacheModuleLocal,
     ImagesModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService, Logger],
