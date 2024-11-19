@@ -1,147 +1,176 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
-  IsNumber,
   IsNotEmpty,
-  IsOptional,
-  IsEnum,
-  ValidateNested,
-  IsArray,
+  IsNumber,
   IsUrl,
-  Min,
-  IsObject,
+  IsArray,
+  ValidateNested,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { InventoryStatus, ProductStatus } from '../entities/product.entity';
+import { ProductStatus, InventoryStatus } from '../product.entity';
 
 class InventoryTrackingDto {
+  @ApiProperty({
+    example: 100,
+    description: 'Current quantity in stock',
+  })
   @IsNumber()
-  @Min(0)
   quantity: number;
 
+  @ApiProperty({
+    example: 10,
+    description: 'Low stock threshold before reordering',
+  })
   @IsNumber()
-  @Min(0)
   lowStockThreshold: number;
 
+  @ApiProperty({
+    enum: InventoryStatus,
+    description: 'Current inventory status',
+  })
   @IsEnum(InventoryStatus)
   status: InventoryStatus;
 
+  @ApiProperty({
+    example: 'PROD-123',
+    description: 'Unique SKU identifier for the product',
+  })
   @IsString()
+  @IsNotEmpty()
   sku: string;
+
+  @ApiPropertyOptional({
+    example: 'WAREHOUSE1',
+    description: 'Storage location',
+  })
+  @IsString()
+  @IsOptional()
+  location?: string;
+
+  @ApiProperty({
+    example: true,
+    description: 'Enable automatic reordering',
+  })
+  @IsBoolean()
+  autoReorder: boolean;
+
+  @ApiPropertyOptional({
+    example: 50,
+    description: 'Quantity to reorder when stock is low',
+  })
+  @IsNumber()
+  @IsOptional()
+  reorderQuantity?: number;
 }
 
-export class CreateProductDto {
+class ShippingDetailsDto {
+  @ApiProperty({
+    example: 'Standard Shipping',
+    description: 'Shipping service name',
+  })
+  @IsString()
+  service: string;
+
+  @ApiProperty({
+    example: '5.99',
+    description: 'Shipping cost',
+  })
+  @IsString()
+  cost: string;
+
+  @ApiProperty({
+    example: 3,
+    description: 'Number of days to dispatch',
+  })
+  @IsNumber()
+  dispatchDays: number;
+}
+
+class ProductCreationDto {
+  @ApiProperty({
+    example: 'Vintage Leather Jacket',
+    description: 'Product title',
+  })
   @IsString()
   @IsNotEmpty()
   title: string;
 
+  @ApiProperty({
+    example: 'A beautifully crafted vintage leather jacket...',
+    description: 'Detailed product description',
+  })
   @IsString()
   @IsNotEmpty()
   description: string;
 
+  @ApiProperty({
+    example: 'Clothing',
+    description: 'Product category',
+  })
   @IsString()
   @IsNotEmpty()
   category: string;
 
+  @ApiProperty({
+    example: 'New',
+    description: 'Product condition',
+  })
   @IsString()
   @IsNotEmpty()
   condition: string;
 
+  @ApiProperty({
+    example: 199.99,
+    description: 'Base price of the product',
+  })
   @IsNumber()
-  @Min(0)
   basePrice: number;
 
+  @ApiProperty({
+    example: [
+      'https://example.com/image1.jpg',
+      'https://example.com/image2.jpg',
+    ],
+    description: 'Array of product image URLs',
+  })
   @IsArray()
   @IsUrl({}, { each: true })
   pictures: string[];
 
-  @IsObject()
-  specifics: Record<string, string | number | boolean>;
-
-  @IsObject()
-  shipping: {
-    service: string;
-    cost: string;
-    dispatchDays: number;
-  };
-
-  @IsObject()
-  returns: {
-    accepted: boolean;
-    period: number;
-    shippingPaidBy: string;
-  };
-
+  @ApiProperty({
+    type: InventoryTrackingDto,
+    description: 'Inventory tracking details',
+  })
   @ValidateNested()
   @Type(() => InventoryTrackingDto)
   inventory: InventoryTrackingDto;
 
-  @IsString()
-  @IsOptional()
-  sku?: string;
-}
-
-export class UpdateProductDto {
-  @IsString()
-  @IsOptional()
-  title?: string;
-
-  @IsString()
-  @IsOptional()
-  description?: string;
-
-  @IsNumber()
-  @Min(0)
-  @IsOptional()
-  basePrice?: number;
-
-  @IsEnum(ProductStatus)
-  @IsOptional()
-  status?: ProductStatus;
-
-  @IsString()
-  @IsOptional()
-  priceChangeReason?: string;
-
+  @ApiProperty({
+    type: ShippingDetailsDto,
+    description: 'Shipping information',
+  })
   @ValidateNested()
-  @Type(() => InventoryTrackingDto)
-  @IsOptional()
-  inventory?: InventoryTrackingDto;
-}
+  @Type(() => ShippingDetailsDto)
+  shipping: ShippingDetailsDto;
 
-export class SearchProductDto {
-  @IsString()
+  @ApiPropertyOptional({
+    example: { color: 'Black', size: 'Large' },
+    description: 'Dynamic product specifics',
+  })
   @IsOptional()
-  category?: string;
+  specifics?: Record<string, string | number | boolean>;
 
-  @IsNumber()
-  @IsOptional()
-  @Min(0)
-  minPrice?: number;
-
-  @IsNumber()
-  @IsOptional()
-  @Min(0)
-  maxPrice?: number;
-
-  @IsEnum(ProductStatus)
+  @ApiPropertyOptional({
+    enum: ProductStatus,
+    default: ProductStatus.DRAFT,
+    description: 'Initial product status',
+  })
   @IsOptional()
   status?: ProductStatus;
-
-  @IsString()
-  @IsOptional()
-  condition?: string;
-
-  @IsEnum(InventoryStatus)
-  @IsOptional()
-  inventoryStatus?: InventoryStatus;
-
-  @IsNumber()
-  @IsOptional()
-  @Min(1)
-  page?: number;
-
-  @IsNumber()
-  @IsOptional()
-  @Min(1)
-  limit?: number;
 }
+
+export { ProductCreationDto };
