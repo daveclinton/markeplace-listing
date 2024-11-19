@@ -8,6 +8,8 @@ import { MarketplacesModule } from './marketplaces/marketplaces.module';
 import { CacheModuleLocal } from './cache/cache.module';
 import { ImagesModule } from './images/images.module';
 import { ProductsModule } from './products/products.module';
+import { EbayTaxonomyController } from './ebay-taxonomy/ebay-taxonomy.controller';
+import { EbayTaxonomyModule } from './ebay-taxonomy/ebay-taxonomy.module';
 
 @Module({
   imports: [
@@ -38,8 +40,9 @@ import { ProductsModule } from './products/products.module';
     CacheModuleLocal,
     ImagesModule,
     ProductsModule,
+    EbayTaxonomyModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, EbayTaxonomyController],
   providers: [AppService, Logger],
 })
 export class AppModule {}
