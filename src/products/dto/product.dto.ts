@@ -1,176 +1,226 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
   IsNumber,
-  IsUrl,
-  IsArray,
-  ValidateNested,
-  IsOptional,
-  IsBoolean,
   IsEnum,
+  IsArray,
+  IsObject,
+  IsOptional,
+  MinLength,
+  MaxLength,
+  IsUrl,
+  Min,
+  IsBoolean,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ProductStatus, InventoryStatus } from '../product.entity';
+import {
+  ProductStatus,
+  MarketplaceType,
+  InventoryStatus,
+} from '../product.entity';
 
 class InventoryTrackingDto {
-  @ApiProperty({
-    example: 100,
-    description: 'Current quantity in stock',
-  })
+  @ApiProperty({ example: 100 })
   @IsNumber()
+  @Min(0)
   quantity: number;
 
-  @ApiProperty({
-    example: 10,
-    description: 'Low stock threshold before reordering',
-  })
+  @ApiProperty({ example: 10 })
   @IsNumber()
+  @Min(0)
   lowStockThreshold: number;
 
-  @ApiProperty({
-    enum: InventoryStatus,
-    description: 'Current inventory status',
-  })
+  @ApiProperty()
   @IsEnum(InventoryStatus)
   status: InventoryStatus;
 
-  @ApiProperty({
-    example: 'PROD-123',
-    description: 'Unique SKU identifier for the product',
-  })
+  @ApiProperty({ example: '123ABC' })
   @IsString()
-  @IsNotEmpty()
   sku: string;
 
-  @ApiPropertyOptional({
-    example: 'WAREHOUSE1',
-    description: 'Storage location',
-  })
+  @ApiPropertyOptional({ example: 'WAREHOUSE1' })
   @IsString()
   @IsOptional()
   location?: string;
 
-  @ApiProperty({
-    example: true,
-    description: 'Enable automatic reordering',
-  })
+  @ApiProperty()
   @IsBoolean()
   autoReorder: boolean;
 
-  @ApiPropertyOptional({
-    example: 50,
-    description: 'Quantity to reorder when stock is low',
-  })
+  @ApiPropertyOptional({ example: 50 })
   @IsNumber()
   @IsOptional()
   reorderQuantity?: number;
 }
 
-class ShippingDetailsDto {
-  @ApiProperty({
-    example: 'Standard Shipping',
-    description: 'Shipping service name',
-  })
+class MarketplaceSpecificDataDto {
+  @ApiPropertyOptional({ example: 'ABC123' })
   @IsString()
-  service: string;
+  @IsOptional()
+  listingId?: string;
 
-  @ApiProperty({
-    example: '5.99',
-    description: 'Shipping cost',
-  })
+  @ApiPropertyOptional()
   @IsString()
-  cost: string;
+  @IsOptional()
+  status?: string;
 
-  @ApiProperty({
-    example: 3,
-    description: 'Number of days to dispatch',
-  })
+  @ApiPropertyOptional({ example: 'https://marketplace.com/product' })
+  @IsUrl()
+  @IsOptional()
+  url?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  lastSyncDate?: Date;
+
+  @ApiPropertyOptional()
+  @IsArray()
+  @IsOptional()
+  errors?: string[];
+
+  @ApiPropertyOptional()
+  @IsArray()
+  @IsOptional()
+  categories?: string[];
+
+  @ApiPropertyOptional()
   @IsNumber()
-  dispatchDays: number;
+  @IsOptional()
+  price?: number;
+
+  @ApiPropertyOptional()
+  @IsNumber()
+  @IsOptional()
+  salesRank?: number;
+
+  @ApiPropertyOptional()
+  @IsObject()
+  @IsOptional()
+  attributes?: Record<string, any>;
 }
 
-class ProductCreationDto {
-  @ApiProperty({
-    example: 'Vintage Leather Jacket',
-    description: 'Product title',
-  })
+export class CreateProductDto {
+  @ApiProperty({ example: 'A great product title' })
   @IsString()
   @IsNotEmpty()
+  @MinLength(3)
+  @MaxLength(255)
   title: string;
 
-  @ApiProperty({
-    example: 'A beautifully crafted vintage leather jacket...',
-    description: 'Detailed product description',
-  })
+  @ApiProperty({ example: 'This is a detailed description of the product.' })
   @IsString()
   @IsNotEmpty()
+  @MinLength(10)
   description: string;
 
-  @ApiProperty({
-    example: 'Clothing',
-    description: 'Product category',
-  })
+  @ApiProperty({ example: 'Books' })
   @IsString()
   @IsNotEmpty()
   category: string;
 
-  @ApiProperty({
-    example: 'New',
-    description: 'Product condition',
-  })
+  @ApiProperty({ example: 'New' })
   @IsString()
   @IsNotEmpty()
   condition: string;
 
-  @ApiProperty({
-    example: 199.99,
-    description: 'Base price of the product',
-  })
+  @ApiProperty({ example: 19.99 })
   @IsNumber()
+  @Min(0)
   basePrice: number;
 
-  @ApiProperty({
-    example: [
-      'https://example.com/image1.jpg',
-      'https://example.com/image2.jpg',
-    ],
-    description: 'Array of product image URLs',
-  })
+  @ApiProperty({ example: ['image1.jpg', 'image2.jpg'] })
   @IsArray()
   @IsUrl({}, { each: true })
   pictures: string[];
 
-  @ApiProperty({
-    type: InventoryTrackingDto,
-    description: 'Inventory tracking details',
-  })
+  @ApiPropertyOptional()
+  @IsObject()
+  @IsOptional()
+  specifics?: { [key: string]: string | number | boolean };
+
+  @ApiProperty()
+  @IsObject()
+  shipping: {
+    service: string;
+    cost: string;
+    dispatchDays: number;
+    dimensions?: {
+      length: number;
+      width: number;
+      height: number;
+      unit: string;
+    };
+    weight?: {
+      value: number;
+      unit: string;
+    };
+  };
+
+  @ApiProperty()
+  @IsObject()
+  returns: {
+    accepted: boolean;
+    period: number;
+    shippingPaidBy: string;
+    restockingFee?: number;
+    conditions?: string[];
+  };
+
+  @ApiProperty()
   @ValidateNested()
   @Type(() => InventoryTrackingDto)
   inventory: InventoryTrackingDto;
 
-  @ApiProperty({
-    type: ShippingDetailsDto,
-    description: 'Shipping information',
-  })
-  @ValidateNested()
-  @Type(() => ShippingDetailsDto)
-  shipping: ShippingDetailsDto;
-
-  @ApiPropertyOptional({
-    example: { color: 'Black', size: 'Large' },
-    description: 'Dynamic product specifics',
-  })
+  @ApiPropertyOptional({ enum: ProductStatus, default: ProductStatus.DRAFT })
+  @IsEnum(ProductStatus)
   @IsOptional()
-  specifics?: Record<string, string | number | boolean>;
+  status?: ProductStatus = ProductStatus.DRAFT;
 
-  @ApiPropertyOptional({
-    enum: ProductStatus,
-    default: ProductStatus.DRAFT,
-    description: 'Initial product status',
-  })
+  @ApiPropertyOptional()
+  @IsObject()
   @IsOptional()
-  status?: ProductStatus;
+  marketplaceData?: {
+    [key in MarketplaceType]?: MarketplaceSpecificDataDto;
+  };
+
+  @ApiPropertyOptional()
+  @IsObject()
+  @IsOptional()
+  seoMetadata?: {
+    metaTitle?: string;
+    metaDescription?: string;
+    keywords?: string[];
+    canonicalUrl?: string;
+  };
+
+  @ApiPropertyOptional()
+  @IsArray()
+  @IsOptional()
+  variants?: {
+    id: string;
+    attributes: Record<string, string>;
+    sku: string;
+    price: number;
+    quantity: number;
+  }[];
+
+  @ApiPropertyOptional()
+  @IsObject()
+  @IsOptional()
+  bundleInfo?: {
+    isBundle: boolean;
+    bundledProducts?: {
+      productId: number;
+      quantity: number;
+    }[];
+  };
+
+  @ApiProperty({ example: 'PROD-001' })
+  @IsString()
+  @IsNotEmpty()
+  sku: string;
 }
 
-export { ProductCreationDto };
+export class UpdateProductDto extends CreateProductDto {}

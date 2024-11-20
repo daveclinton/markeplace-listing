@@ -54,7 +54,17 @@ async function bootstrap() {
   app.use(compression());
 
   app.use((req, res, next) => {
-    logger.debug(`Request from origin: ${req.headers.origin}`);
+    let origin = 'Unknown';
+
+    if (req.headers.origin) {
+      origin = req.headers.origin;
+    } else if (req.get('host')) {
+      origin = req.get('host');
+    } else if (req.ip) {
+      origin = req.ip;
+    }
+
+    logger.debug(`Request from origin: ${origin}`);
     next();
   });
 

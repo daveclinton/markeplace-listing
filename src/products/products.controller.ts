@@ -2,45 +2,67 @@ import {
   Controller,
   Post,
   Body,
-  Headers,
-  UsePipes,
-  ValidationPipe,
-  BadRequestException,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  Param,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 
 import { Product } from './product.entity';
-import { ProductsService } from './products.service';
-import { ProductCreationDto } from './dto/product.dto';
+import { ProductService } from './products.service';
+import { CreateProductDto } from './dto/product.dto';
 
 @ApiTags('products')
 @Controller('products')
-export class ProductsController {
-  constructor(private readonly productService: ProductsService) {}
+export class ProductController {
+  private readonly logger = new Logger(ProductController.name);
+
+  constructor(private readonly productService: ProductService) {
+    this.logger.log('ProductController initialized');
+  }
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new product' })
-  @ApiResponse({ status: 201, description: 'Product successfully created' })
-  @ApiResponse({ status: 400, description: 'Bad Request' })
-  @ApiHeader({
-    name: 'x-supabase-user-id',
+  @ApiParam({
+    name: 'supabaseUserId',
     description: 'Supabase User ID',
     required: true,
   })
-  @UsePipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  )
+  @ApiResponse({
+    status: 201,
+    description: 'Product successfully created',
+    type: Product,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request: Invalid product data',
+  })
   async createProduct(
-    @Headers('x-supabase-user-id') supabaseUserId: string,
-    @Body() productData: ProductCreationDto,
+    @Body() createProductDto: CreateProductDto,
+    @Param('supabaseUserId') supabaseUserId: string,
   ): Promise<Product> {
-    if (!supabaseUserId) {
-      throw new BadRequestException('Supabase User ID is required');
+    this.logger.log(
+      `Received product creation request for user: ${supabaseUserId}`,
+    );
+
+    try {
+      const product = await this.productService.createProduct(
+        createProductDto,
+        supabaseUserId,
+      );
+
+      this.logger.log(
+        `Product created successfully. Product ID: ${product.id}`,
+      );
+      return product;
+    } catch (error) {
+      this.logger.error(
+        `Product creation failed: ${error.message}`,
+        error.stack,
+      );
+      throw error;
     }
-    return this.productService.createProduct(supabaseUserId, productData);
   }
 }
