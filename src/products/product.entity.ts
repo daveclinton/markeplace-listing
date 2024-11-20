@@ -50,6 +50,12 @@ export enum InventoryStatus {
   DISCONTINUED = 'discontinued',
 }
 
+export enum ListingStatus {
+  PENDING = 'pending',
+  LISTED = 'listed',
+  DELISTED = 'de_listed',
+}
+
 class InventoryTracking {
   @ApiProperty({ example: 100, description: 'Current quantity in stock' })
   @IsNumber()
@@ -95,7 +101,7 @@ class MarketplaceSpecificData {
   @ApiProperty({ description: 'Current status on the marketplace' })
   @IsString()
   @IsOptional()
-  status?: string;
+  status?: ListingStatus;
 
   @ApiProperty({
     example: 'https://marketplace.com/product',

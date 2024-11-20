@@ -121,6 +121,10 @@ export class ProductService {
       const savedProduct = await this.productRepository.save(product);
 
       await queryRunner.commitTransaction();
+      this.logger.info('Product Creation Result', {
+        payload: savedProduct,
+        userSupabaseId,
+      });
       return savedProduct;
     } catch (error) {
       await queryRunner.rollbackTransaction();
