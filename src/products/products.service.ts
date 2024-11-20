@@ -43,6 +43,94 @@ export class ProductService {
     this.logger.info('ProductService initialized');
   }
 
+  async createProduct(
+    createProductDto: CreateProductDto,
+    userSupabaseId: string,
+  ): Promise<Product> {
+    this.logger.info('Create Product initialized');
+    const queryRunner =
+      this.productRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = await this.userRepository.findOne({
+        where: { supabase_user_id: userSupabaseId },
+      });
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userSupabaseId} not found`);
+      }
+
+      if (createProductDto.variants?.length) {
+        this.validateProductVariants(createProductDto.variants);
+      }
+
+      const baseSKU = await this.ensureUniqueSKU(
+        this.generateSKU(createProductDto.category, createProductDto.title),
+        userSupabaseId,
+      );
+
+      const productData = {
+        ...createProductDto,
+        sku: baseSKU,
+        user,
+        status: ProductStatus.DRAFT,
+        priceHistory: [
+          {
+            amount: createProductDto.basePrice,
+            date: new Date(),
+            reason: 'Initial price',
+          },
+        ],
+        seoMetadata:
+          createProductDto.seoMetadata ||
+          this.generateSEOMetadata(
+            createProductDto.title,
+            createProductDto.description,
+          ),
+        inventory: {
+          ...createProductDto.inventory,
+          sku: baseSKU,
+          status: this.determineInventoryStatus(
+            createProductDto.inventory.quantity,
+            createProductDto.inventory.lowStockThreshold,
+          ),
+        },
+      };
+
+      // Process variants with unique SKUs
+      if (productData.variants?.length) {
+        productData.variants = await Promise.all(
+          productData.variants.map(async (variant, index) => ({
+            ...variant,
+            sku: await this.ensureUniqueSKU(
+              this.generateSKU(
+                createProductDto.category,
+                createProductDto.title,
+                variant.attributes,
+              ),
+              userSupabaseId,
+            ),
+            id: `${baseSKU}-VAR-${index + 1}`,
+          })),
+        );
+      }
+
+      // Create and save product
+      const product = this.productRepository.create(productData);
+      const savedProduct = await this.productRepository.save(product);
+
+      await queryRunner.commitTransaction();
+      return savedProduct;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error('Product creation failed', error);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   private generateSKU(
     category: string,
     title: string,
@@ -137,93 +225,6 @@ export class ProductService {
         throw new BadRequestException('Variant quantity cannot be negative');
       }
     });
-  }
-
-  async createProduct(
-    createProductDto: CreateProductDto,
-    userSupabaseId: string,
-  ): Promise<Product> {
-    const queryRunner =
-      this.productRepository.manager.connection.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const user = await this.userRepository.findOne({
-        where: { supabase_user_id: userSupabaseId },
-      });
-      if (!user) {
-        throw new NotFoundException(`User with ID ${userSupabaseId} not found`);
-      }
-
-      if (createProductDto.variants?.length) {
-        this.validateProductVariants(createProductDto.variants);
-      }
-
-      const baseSKU = await this.ensureUniqueSKU(
-        this.generateSKU(createProductDto.category, createProductDto.title),
-        userSupabaseId,
-      );
-
-      const productData = {
-        ...createProductDto,
-        sku: baseSKU,
-        user,
-        status: ProductStatus.DRAFT,
-        priceHistory: [
-          {
-            amount: createProductDto.basePrice,
-            date: new Date(),
-            reason: 'Initial price',
-          },
-        ],
-        seoMetadata:
-          createProductDto.seoMetadata ||
-          this.generateSEOMetadata(
-            createProductDto.title,
-            createProductDto.description,
-          ),
-        inventory: {
-          ...createProductDto.inventory,
-          sku: baseSKU,
-          status: this.determineInventoryStatus(
-            createProductDto.inventory.quantity,
-            createProductDto.inventory.lowStockThreshold,
-          ),
-        },
-      };
-
-      // Process variants with unique SKUs
-      if (productData.variants?.length) {
-        productData.variants = await Promise.all(
-          productData.variants.map(async (variant, index) => ({
-            ...variant,
-            sku: await this.ensureUniqueSKU(
-              this.generateSKU(
-                createProductDto.category,
-                createProductDto.title,
-                variant.attributes,
-              ),
-              userSupabaseId,
-            ),
-            id: `${baseSKU}-VAR-${index + 1}`,
-          })),
-        );
-      }
-
-      // Create and save product
-      const product = this.productRepository.create(productData);
-      const savedProduct = await this.productRepository.save(product);
-
-      await queryRunner.commitTransaction();
-      return savedProduct;
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      this.logger.error('Product creation failed', error);
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
   }
 
   private determineInventoryStatus(

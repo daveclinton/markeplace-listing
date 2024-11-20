@@ -24,49 +24,26 @@ export class ProductController {
   }
 
   @Post()
-  @ApiOperation({
-    summary: 'Create a new product',
-    description:
-      'Creates a new product with the provided details including inventory, shipping, and variant information.',
-  })
-  @ApiHeader({
-    name: 'user-supabase-id',
-    description: 'Supabase user ID',
-    required: true,
-    example: 'user123',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Product has been successfully created.',
-    type: Product,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad request - Missing required fields or invalid data.',
-    schema: {
-      example: {
-        statusCode: 400,
-        message: 'Category and title are required fields',
-        error: 'Bad Request',
-      },
-    },
-  })
-  @ApiResponse({ status: 404, description: 'User not found.' })
   async createProduct(
     @Body() createProductDto: CreateProductDto,
     @Headers('user-supabase-id') userSupabaseId: string,
-  ): Promise<Product> {
+  ): Promise<CreateProductDto> {
     try {
+      // Explicit validation before processing
+      if (!createProductDto.title || !createProductDto.category) {
+        this.logger.warn('Missing required product fields', {
+          dto: createProductDto,
+          userSupabaseId,
+        });
+        throw new BadRequestException('Category and title are required fields');
+      }
+
       if (!userSupabaseId) {
         this.logger.error('Missing user-supabase-id header');
         throw new BadRequestException('user-supabase-id header is required');
       }
 
-      console.log(
-        'Incoming Payload:',
-        JSON.stringify(createProductDto, null, 2),
-      );
-      this.logger.log('Product Creation Request', {
+      this.logger.info('Product Creation Request', {
         payload: createProductDto,
         userSupabaseId,
       });
@@ -76,18 +53,15 @@ export class ProductController {
         userSupabaseId,
       );
     } catch (error) {
-      this.logger.error('Error creating product:', {
-        error: {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        },
-        payload: JSON.stringify({
-          title: createProductDto?.title,
-          category: createProductDto?.category,
-          userId: userSupabaseId,
-        }),
+      // Log the full error details
+      this.logger.error('Error creating product', {
+        error: error.message,
+        stack: error.stack,
+        payload: createProductDto,
+        userSupabaseId,
       });
+
+      // Rethrow or throw a specific error
       throw error;
     }
   }

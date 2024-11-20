@@ -126,14 +126,7 @@ async function bootstrap() {
     },
   );
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      skipMissingProperties: false,
-    }),
-  );
+  app.useGlobalPipes(new ValidationPipe());
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
