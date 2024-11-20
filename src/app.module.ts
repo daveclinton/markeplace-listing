@@ -1,4 +1,4 @@
-import { Logger, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -10,9 +10,14 @@ import { ImagesModule } from './images/images.module';
 import { ProductsModule } from './products/products.module';
 import { EbayTaxonomyController } from './ebay-taxonomy/ebay-taxonomy.controller';
 import { EbayTaxonomyModule } from './ebay-taxonomy/ebay-taxonomy.module';
+import { LoggingService } from './common/services/logging.service';
+import { WinstonModule } from 'nest-winston';
 
 @Module({
   imports: [
+    WinstonModule.forRootAsync({
+      useClass: LoggingService,
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -43,6 +48,6 @@ import { EbayTaxonomyModule } from './ebay-taxonomy/ebay-taxonomy.module';
     EbayTaxonomyModule,
   ],
   controllers: [AppController, EbayTaxonomyController],
-  providers: [AppService, Logger],
+  providers: [AppService, LoggingService],
 })
 export class AppModule {}

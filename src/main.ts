@@ -6,18 +6,19 @@ import * as compression from 'compression';
 import { ValidationPipe, Logger, HttpStatus } from '@nestjs/common';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptot';
-import { WinstonModule } from 'nest-winston';
-import { instance } from './common/logger/winston.logger';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { HttpService } from '@nestjs/axios';
 
 declare const module: any;
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create(AppModule);
 
-  const app = await NestFactory.create(AppModule, {
-    logger: WinstonModule.createLogger({ instance: instance }),
-  });
+  const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
+
+  app.useLogger(logger);
+
+  logger.log('Application starting...', 'Bootstrap');
 
   const allowedOrigins = [
     'http://localhost:3000',
@@ -127,12 +128,10 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      skipMissingProperties: false,
     }),
   );
 
@@ -153,12 +152,19 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
 
-  await app.listen(port, '0.0.0.0');
-
-  logger.log(`Application is running on: http://localhost:${port}`);
-  logger.log(
-    `Swagger documentation available at: http://localhost:${port}/docs`,
-  );
+  try {
+    await app.listen(port);
+    logger.log(`Application running on port ${port}`, 'Bootstrap');
+    logger.log(
+      `Swagger documentation available at: http://localhost:${port}/docs`,
+    );
+  } catch (error) {
+    logger.error(
+      `Failed to start application: ${error.message}`,
+      error.stack,
+      'Bootstrap',
+    );
+  }
 
   if (module.hot) {
     module.hot.accept();
