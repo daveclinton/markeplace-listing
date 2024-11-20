@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,6 +13,7 @@ import { User } from '../users/user.entity';
 import { CreateProductDto } from './product.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, IsObject, Min } from 'class-validator';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 class ProductVariantDto {
   @ApiPropertyOptional({ description: 'Variant attributes' })
@@ -31,13 +33,12 @@ class ProductVariantDto {
 
 @Injectable()
 export class ProductService {
-  private readonly logger = new Logger(ProductService.name);
-
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {
     this.logger.log('Product Service initialized');
   }
