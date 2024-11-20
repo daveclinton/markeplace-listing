@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { CacheService } from 'src/cache/cache.service';
 import axios, { AxiosError } from 'axios';
 import { ProductSearchResponse } from './dto/product-search.interface';
@@ -13,6 +19,7 @@ import {
 } from './interfaces/image-search.interface';
 import { v2 as cloudinary } from 'cloudinary';
 import { getJson } from 'serpapi';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 interface GoogleShoppingProduct {
   product_id: string;
@@ -42,7 +49,6 @@ interface GoogleShoppingResponse {
 
 @Injectable()
 export class ImagesService {
-  private readonly logger = new Logger(ImagesService.name);
   private readonly SEARCH_TIMEOUT = 10000; // 10 seconds
   private readonly MAX_RETRIES = 2;
   private readonly RETRY_DELAY = 1000; // 1 second
@@ -51,6 +57,7 @@ export class ImagesService {
     private cacheService: CacheService,
     private httpService: HttpService,
     private readonly configService: ConfigService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {
     this.logger.log('ImagesService initialized');
     this.initializeCloudinary();

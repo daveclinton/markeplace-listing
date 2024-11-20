@@ -10,6 +10,7 @@ import {
   UploadedFile,
   Body,
   HttpException,
+  Inject,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -26,12 +27,15 @@ import {
   ProductSearchResponse,
 } from './interfaces/image-search.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @ApiTags('Images')
 @Controller('images')
 export class ImagesController {
-  private readonly logger = new Logger(ImagesController.name);
-  constructor(private readonly imageSearchService: ImagesService) {}
+  constructor(
+    private readonly imageSearchService: ImagesService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+  ) {}
   @Get('search')
   @ApiOperation({ summary: 'Search for images based on text query' })
   @ApiResponse({
