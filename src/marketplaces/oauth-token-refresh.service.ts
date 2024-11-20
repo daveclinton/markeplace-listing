@@ -1,19 +1,24 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  Inject,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { UserMarketplaceLink } from './user.marketplace-link.entity';
 import { MarketplaceConfigService } from './marketplaces.config';
 import { MarketplaceConnectionStatusEnums } from './marketplace-connection-status.enum';
 import { MarketplaceConfig, MarketplaceSlug } from './marketplace.types';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class OAuthTokenRefreshService {
-  private readonly logger = new Logger(OAuthTokenRefreshService.name);
-
   constructor(
     @InjectRepository(UserMarketplaceLink)
     private readonly userMarketplaceLinkRepo: Repository<UserMarketplaceLink>,
     private readonly marketplaceConfig: MarketplaceConfigService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {}
 
   async refreshTokenIfNeeded(

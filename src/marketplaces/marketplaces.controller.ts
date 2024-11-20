@@ -10,6 +10,7 @@ import {
   Res,
   NotFoundException,
   Patch,
+  Inject,
 } from '@nestjs/common';
 import { Response } from 'express';
 import {
@@ -25,16 +26,16 @@ import { MarketplaceConfigService } from './marketplaces.config';
 import { UpdateMarketplaceStatusDto } from './dto/marketplace.dto';
 import { MarketplaceSlug, MarketplaceResponse } from './marketplace.types';
 import { MarketplaceConnectionStatusEnums } from './marketplace-connection-status.enum';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @ApiTags('marketplaces')
 @Controller('marketplaces')
 @ApiBearerAuth()
 export class MarketplacesController {
-  private readonly logger = new Logger(MarketplacesController.name);
-
   constructor(
     private readonly marketplacesService: MarketplacesService,
     private readonly marketplaceConfig: MarketplaceConfigService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {
     this.logger.log('MarketplacesController initialized');
   }

@@ -1,13 +1,16 @@
 import { ConfigService } from '@nestjs/config';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { MarketplaceConfig, MarketplaceSlug } from './marketplace.types';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class MarketplaceConfigService {
   private readonly marketplaces: Map<MarketplaceSlug, MarketplaceConfig>;
-  private readonly logger = new Logger(MarketplaceConfigService.name);
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+  ) {
     this.marketplaces = this.initializeMarketplaces();
   }
 

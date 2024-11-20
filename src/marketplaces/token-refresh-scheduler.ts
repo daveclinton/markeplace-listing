@@ -1,12 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { OAuthTokenRefreshService } from './oauth-token-refresh.service';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class TokenRefreshScheduler {
-  private readonly logger = new Logger(TokenRefreshScheduler.name);
-
-  constructor(private readonly oauthTokenRefresh: OAuthTokenRefreshService) {}
+  constructor(
+    private readonly oauthTokenRefresh: OAuthTokenRefreshService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+  ) {}
 
   @Cron(CronExpression.EVERY_2_HOURS)
   async handleTokenRefresh() {
