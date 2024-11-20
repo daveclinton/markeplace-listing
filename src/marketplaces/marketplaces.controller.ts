@@ -6,7 +6,6 @@ import {
   Query,
   HttpStatus,
   BadRequestException,
-  Logger,
   Res,
   NotFoundException,
   Patch,
@@ -27,6 +26,7 @@ import { UpdateMarketplaceStatusDto } from './dto/marketplace.dto';
 import { MarketplaceSlug, MarketplaceResponse } from './marketplace.types';
 import { MarketplaceConnectionStatusEnums } from './marketplace-connection-status.enum';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 
 @ApiTags('marketplaces')
 @Controller('marketplaces')
@@ -36,9 +36,7 @@ export class MarketplacesController {
     private readonly marketplacesService: MarketplacesService,
     private readonly marketplaceConfig: MarketplaceConfigService,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-  ) {
-    this.logger.log('MarketplacesController initialized');
-  }
+  ) {}
 
   @Get(':userSupabaseId')
   @ApiOperation({
@@ -56,11 +54,11 @@ export class MarketplacesController {
   async getMarketplacesForUser(
     @Param('userSupabaseId') userSupabaseId: string,
   ): Promise<MarketplaceResponse[]> {
-    this.logger.log(`Getting marketplaces for user: ${userSupabaseId}`);
+    this.logger.info(`Getting marketplaces for user: ${userSupabaseId}`);
     try {
       const marketplaces =
         await this.marketplacesService.getMarketplacesForUser(userSupabaseId);
-      this.logger.debug(
+      this.logger.info(
         `Retrieved ${marketplaces.length} marketplaces for user ${userSupabaseId}`,
       );
       return marketplaces;
@@ -94,7 +92,7 @@ export class MarketplacesController {
     @Param('marketplaceId') marketplaceId: number,
     @Body() updateDto: UpdateMarketplaceStatusDto,
   ): Promise<{ status: number; message: string }> {
-    this.logger.log(
+    this.logger.debug(
       `Updating marketplace ${marketplaceId} status to ${updateDto.status} for user ${userSupabaseId}`,
     );
 
@@ -132,7 +130,9 @@ export class MarketplacesController {
     @Query('state') state: string,
     @Res() res: Response,
   ): Promise<void> {
-    this.logger.log(`Handling OAuth callback for marketplace: ${marketplace}`);
+    this.logger.debug(
+      `Handling OAuth callback for marketplace: ${marketplace}`,
+    );
     this.logger.debug(`OAuth callback params - State: ${state}, Code: ${code}`);
 
     try {
@@ -240,7 +240,7 @@ export class MarketplacesController {
       );
     }
 
-    this.logger.log(
+    this.logger.debug(
       `Redirecting to ${status} URL: ${mobileDeepLink.toString()}`,
     );
     return res.redirect(302, mobileDeepLink.toString());

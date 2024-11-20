@@ -1,6 +1,5 @@
 import {
   Controller,
-  Logger,
   Get,
   HttpStatus,
   Query,
@@ -28,6 +27,7 @@ import {
 } from './interfaces/image-search.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 
 @ApiTags('Images')
 @Controller('images')
@@ -50,7 +50,9 @@ export class ImagesController {
     @Query() queryDto: ImageSearchQueryDto,
   ): Promise<ProductSearchResponse> {
     try {
-      this.logger.log(`Searching images with query: ${queryDto.query}`);
+      this.logger.info(`Searching images with query ${queryDto.query}`, {
+        metadata: '',
+      });
       return await this.imageSearchService.searchProducts(queryDto);
     } catch (error) {
       this.logger.error(`Error searching images: ${error.message}`);

@@ -1,10 +1,4 @@
-import {
-  HttpException,
-  HttpStatus,
-  Inject,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { CacheService } from 'src/cache/cache.service';
 import axios, { AxiosError } from 'axios';
 import { ProductSearchResponse } from './dto/product-search.interface';
@@ -20,6 +14,7 @@ import {
 import { v2 as cloudinary } from 'cloudinary';
 import { getJson } from 'serpapi';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 
 interface GoogleShoppingProduct {
   product_id: string;
@@ -59,9 +54,9 @@ export class ImagesService {
     private readonly configService: ConfigService,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {
-    this.logger.log('ImagesService initialized');
     this.initializeCloudinary();
     this.validateConfig();
+    // this.logger.debug('ImagesService initialized');
   }
   private initializeCloudinary(): void {
     cloudinary.config({
@@ -96,7 +91,7 @@ export class ImagesService {
     queryDto: ProductSearchQueryDto,
   ): Promise<ProductSearchResponse> {
     const startTime = Date.now();
-    this.logger.debug(
+    this.logger.info(
       `Starting product search with params: ${JSON.stringify(queryDto)}`,
     );
 
@@ -189,7 +184,7 @@ export class ImagesService {
       this.logger.debug(`Cached response for key: ${cacheKey}`);
 
       const duration = Date.now() - startTime;
-      this.logger.log(
+      this.logger.debug(
         `Product search completed successfully in ${duration}ms. Query: "${queryDto.query}", Results: ${formattedResponse.products.length}`,
       );
 

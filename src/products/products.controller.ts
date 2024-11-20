@@ -4,7 +4,6 @@ import {
   Body,
   Headers,
   BadRequestException,
-  Logger,
   Inject,
 } from '@nestjs/common';
 import { Product } from './product.entity';
@@ -12,6 +11,7 @@ import { ProductService } from './products.service';
 import { CreateProductDto } from './product.dto';
 import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 
 @ApiTags('products')
 @Controller('products')
@@ -20,7 +20,7 @@ export class ProductController {
     private readonly productService: ProductService,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {
-    this.logger.log('ProductController initialized');
+    this.logger.info('ProductController initialized');
   }
 
   @Post()

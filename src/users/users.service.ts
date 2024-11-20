@@ -1,8 +1,9 @@
-import { Injectable, ConflictException, Logger, Inject } from '@nestjs/common';
+import { Injectable, ConflictException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 
 @Injectable()
 export class UsersService {
@@ -10,9 +11,7 @@ export class UsersService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-  ) {
-    this.logger.debug('UsersService initialized');
-  }
+  ) {}
 
   async createUser(supabase_user_id: string): Promise<User> {
     this.logger.debug(
@@ -23,7 +22,7 @@ export class UsersService {
       const user = this.userRepository.create({ supabase_user_id });
       const savedUser = await this.userRepository.save(user);
 
-      this.logger.log(
+      this.logger.debug(
         `User created successfully with ID: ${savedUser.id}, Supabase ID: ${supabase_user_id}`,
       );
       return savedUser;

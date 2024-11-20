@@ -3,7 +3,6 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
-  Logger,
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,6 +13,7 @@ import { CreateProductDto } from './product.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, IsObject, Min } from 'class-validator';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 
 class ProductVariantDto {
   @ApiPropertyOptional({ description: 'Variant attributes' })
@@ -40,7 +40,7 @@ export class ProductService {
     private readonly userRepository: Repository<User>,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {
-    this.logger.log('Product Service initialized');
+    this.logger.info('ProductService initialized');
   }
 
   private generateSKU(

@@ -1,7 +1,8 @@
 import { ConfigService } from '@nestjs/config';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { MarketplaceConfig, MarketplaceSlug } from './marketplace.types';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 
 @Injectable()
 export class MarketplaceConfigService {
@@ -19,7 +20,7 @@ export class MarketplaceConfigService {
 
     const baseUrl = this.configService.get<string>('APP_URL');
 
-    this.logger.debug(`Base URL from config: ${baseUrl}`);
+    this.logger.info(`Base URL from config: ${baseUrl}`);
 
     marketplaceMap.set('ebay', {
       id: 1,

@@ -154,7 +154,10 @@ async function bootstrap() {
 
   try {
     await app.listen(port);
-    logger.log(`Application running on port ${port}`, 'Bootstrap');
+    logger.log(
+      `Application running on port http://localhost:${port}`,
+      'Bootstrap',
+    );
     logger.log(
       `Swagger documentation available at: http://localhost:${port}/docs`,
     );

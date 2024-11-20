@@ -28,14 +28,12 @@ export class MarketplacesService {
     private readonly cacheService: CacheService,
     private readonly oauthTokenRefresh: OAuthTokenRefreshService,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-  ) {
-    this.logger.log('MarketplacesService initialized');
-  }
+  ) {}
 
   async getMarketplacesForUser(
     userSupabaseId: string,
   ): Promise<MarketplaceStatus[]> {
-    this.logger.log(`Fetching marketplaces for user: ${userSupabaseId}`);
+    this.logger.debug(`Fetching marketplaces for user: ${userSupabaseId}`);
     try {
       const cacheKey = `marketplaces:${userSupabaseId}`;
       const cachedMarketplaces = await this.cacheService.get(cacheKey);
@@ -100,7 +98,7 @@ export class MarketplacesService {
     status: MarketplaceConnectionStatusEnums,
     errorMessage?: string,
   ): Promise<void> {
-    this.logger.log(
+    this.logger.debug(
       `Updating marketplace ${marketplaceId} status to ${status} for user ${userSupabaseId}`,
     );
 
@@ -302,7 +300,9 @@ export class MarketplacesService {
     refresh_token?: string;
     expires_in: number;
   }> {
-    this.logger.log(`Exchanging code for token for marketplace ${config.slug}`);
+    this.logger.debug(
+      `Exchanging code for token for marketplace ${config.slug}`,
+    );
     if (config.slug === 'ebay') {
       return this.exchangeEbayCodeForToken(config, code);
     }
@@ -351,7 +351,7 @@ export class MarketplacesService {
     refresh_token?: string;
     expires_in: number;
   }> {
-    this.logger.log('Exchanging eBay code for token');
+    this.logger.debug('Exchanging eBay code for token');
     try {
       const params = new URLSearchParams({
         grant_type: 'authorization_code',
