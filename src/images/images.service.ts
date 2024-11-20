@@ -44,10 +44,6 @@ interface GoogleShoppingResponse {
 
 @Injectable()
 export class ImagesService {
-  private readonly SEARCH_TIMEOUT = 10000; // 10 seconds
-  private readonly MAX_RETRIES = 2;
-  private readonly RETRY_DELAY = 1000; // 1 second
-
   constructor(
     private cacheService: CacheService,
     private httpService: HttpService,
@@ -56,7 +52,6 @@ export class ImagesService {
   ) {
     this.initializeCloudinary();
     this.validateConfig();
-    // this.logger.debug('ImagesService initialized');
   }
   private initializeCloudinary(): void {
     cloudinary.config({

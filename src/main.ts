@@ -30,7 +30,7 @@ async function bootstrap() {
     'https://www.ebay.com',
     'https://api.ebay.com',
     'com.snaplist://auth/accept',
-    'https://8831-41-212-41-122.ngrok-free.app',
+    'https://tunnel.daveclintonn.cc',
   ];
 
   app.use(
@@ -145,15 +145,19 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
 
+  const localURL = process.env.APP_URL ?? '';
+
   try {
     await app.listen(port);
     logger.log(
       `Application running on port http://localhost:${port}`,
       'Bootstrap',
     );
+    logger.log(`Public Tunnel URL ${localURL}`);
     logger.log(
       `Swagger documentation available at: http://localhost:${port}/docs`,
     );
+    logger.log(`Public Swagger documentation available at: ${localURL}/docs`);
   } catch (error) {
     logger.error(
       `Failed to start application: ${error.message}`,
