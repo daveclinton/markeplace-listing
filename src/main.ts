@@ -157,7 +157,7 @@ async function bootstrap() {
     logger.log(
       `Swagger documentation available at: http://localhost:${port}/docs`,
     );
-    logger.log(`Public Swagger documentation available at: ${localURL}/docs`);
+    logger.log(`Public Swaggerr documentation available at: ${localURL}/docs`);
   } catch (error) {
     logger.error(
       `Failed to start application: ${error.message}`,

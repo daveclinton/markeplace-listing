@@ -15,10 +15,10 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { ImageSearchQueryDto } from './dto/image-search.dto';
 import { ImagesService } from './images.service';
 import {
   GoogleReverseImageSearchResponse,
@@ -28,6 +28,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { ProductSearchQueryDto } from './dto/product-search.dto';
 
 @ApiTags('Images')
 @Controller('images')
@@ -38,6 +39,26 @@ export class ImagesController {
   ) {}
   @Get('search')
   @ApiOperation({ summary: 'Search for images based on text query' })
+  @ApiQuery({
+    name: 'query',
+    required: true,
+    description: 'Search text for finding images',
+    type: String,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of results to return',
+    type: Number,
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number for pagination',
+    type: Number,
+    example: 1,
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Succesfully retrieved images',
@@ -47,14 +68,27 @@ export class ImagesController {
     description: 'Invalid search parameters',
   })
   async searchImages(
-    @Query() queryDto: ImageSearchQueryDto,
+    @Query() queryDto: ProductSearchQueryDto,
   ): Promise<ProductSearchResponse> {
+    this.logger.info(
+      `Searching images with query: ${JSON.stringify(queryDto)}`,
+      {
+        query: queryDto,
+      },
+    );
     try {
-      this.logger.info(`Searching images with query ${queryDto.query}`, {
-        metadata: '',
-      });
-      return await this.imageSearchService.searchProducts(queryDto);
+      const productSearchDto: ProductSearchQueryDto = {
+        query: queryDto.query,
+        limit: queryDto.limit,
+        page: queryDto.page,
+      };
+      return await this.imageSearchService.searchProducts(productSearchDto);
     } catch (error) {
+      this.logger.error('Image search error', {
+        error: error.message,
+        stack: error.stack,
+        query: queryDto,
+      });
       this.logger.error(`Error searching images: ${error.message}`);
       throw new BadRequestException(error.message);
     }
