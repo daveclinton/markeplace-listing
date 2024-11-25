@@ -7,9 +7,6 @@ import { AppService } from './app.service';
 import { MarketplacesModule } from './marketplaces/marketplaces.module';
 import { CacheModuleLocal } from './cache/cache.module';
 import { ImagesModule } from './images/images.module';
-import { ProductsModule } from './products/products.module';
-import { EbayTaxonomyController } from './ebay-taxonomy/ebay-taxonomy.controller';
-import { EbayTaxonomyModule } from './ebay-taxonomy/ebay-taxonomy.module';
 import { LoggingService } from './common/services/logging.service';
 import { WinstonModule } from 'nest-winston';
 
@@ -44,10 +41,8 @@ import { WinstonModule } from 'nest-winston';
     MarketplacesModule,
     CacheModuleLocal,
     ImagesModule,
-    ProductsModule,
-    EbayTaxonomyModule,
   ],
-  controllers: [AppController, EbayTaxonomyController],
+  controllers: [AppController],
   providers: [AppService, LoggingService],
 })
 export class AppModule {}
