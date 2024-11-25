@@ -12,6 +12,7 @@ import {
   MarketplaceEnum,
 } from 'src/common/enums/marketplace-enum';
 import { ApiProperty } from '@nestjs/swagger';
+import { User } from 'src/users/user.entity';
 
 @Entity('product_marketplace_listing')
 export class ProductMarketplaceListing {
@@ -22,9 +23,14 @@ export class ProductMarketplaceListing {
   @ManyToOne(() => ProductEntity, (product) => product.marketplace_listings)
   product: ProductEntity;
 
+  @ManyToOne(() => User)
+  @ApiProperty({ type: () => User })
+  user: User;
+
   @ApiProperty({ example: 'uuid-123' })
   @Column({ type: 'uuid' })
   user_supabase_id: string;
+
   @ApiProperty({ enum: MarketplaceEnum })
   @Column({ type: 'enum', enum: MarketplaceEnum })
   marketplace: MarketplaceEnum;

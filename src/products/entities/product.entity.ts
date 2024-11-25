@@ -3,17 +3,23 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { ProductMarketplaceListing } from './product-marketplace-listing.entity';
+import { User } from 'src/users/user.entity';
 
 @Entity('products')
 export class ProductEntity {
   @ApiProperty({ example: 1 })
   @PrimaryGeneratedColumn('increment')
   id: number;
+
+  @ManyToOne(() => User, (user) => user.products)
+  @ApiProperty({ type: () => User })
+  user: User;
 
   @ApiProperty({ example: 'uuid_123' })
   @Column({ type: 'uuid' })
