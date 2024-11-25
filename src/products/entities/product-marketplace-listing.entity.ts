@@ -10,9 +10,9 @@ import { ProductEntity } from './product.entity';
 import {
   ListingStatus,
   MarketplaceEnum,
-} from 'src/common/enums/marketplace-enum';
+} from '../../common/enums/marketplace-enum';
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from 'src/users/user.entity';
+import { User } from '../../users/user.entity';
 
 @Entity('product_marketplace_listing')
 export class ProductMarketplaceListing {

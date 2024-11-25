@@ -7,8 +7,8 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserMarketplaceLink } from '../marketplaces/user.marketplace-link.entity';
-import { ProductEntity } from 'src/products/entities/product.entity';
-import { ProductMarketplaceListing } from 'src/products/entities/product-marketplace-listing.entity';
+import { ProductEntity } from '../products/entities/product.entity';
+import { ProductMarketplaceListing } from '../products/entities/product-marketplace-listing.entity';
 
 @Entity('users')
 export class User {

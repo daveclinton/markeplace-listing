@@ -9,6 +9,7 @@ import { CacheModuleLocal } from './cache/cache.module';
 import { ImagesModule } from './images/images.module';
 import { LoggingService } from './common/services/logging.service';
 import { WinstonModule } from 'nest-winston';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { WinstonModule } from 'nest-winston';
     MarketplacesModule,
     CacheModuleLocal,
     ImagesModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService, LoggingService],
