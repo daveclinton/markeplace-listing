@@ -102,3 +102,8 @@ curl -X GET \
   "https://graph.facebook.com/v20.0/me/businesses" \
   -H "Authorization: Bearer EAAQSMdA76pQBO2E0Fbee0Vs8wyR54d0SiZC270ZAUxia54ZBNKzmrlFBxKE5uHiMQWb3BS4mWlnlpS42IxCtsZBniTmjxcqwnjP1p0yNldwsVafKtcfkHNZACkLOKXuWkOcERO6vZBeUZC2sU0zUgg9E7XrT8hW0YyAH3sHhRNU1me44zkq8q6gLwg6x9jACwp9reQjv3dfQnL6ZBTQfjaItE4luV8ZARsbSt7hfThMslZBN4DTclG2CBCz9VTeSy4"
 "catalog_management", and "commerce_account_read_orders";
+
+# Migrations
+
+src/migrations/CreateUserTable: This specifies the folder (src/migrations) and the migration name (CreateUserTable)
+pnpm migration:create src/migrations/CreateUserTable

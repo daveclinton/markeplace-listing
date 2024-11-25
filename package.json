@@ -20,7 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "typeorm-ts-node-commonjs",
     "migration:create": "pnpm typeorm migration:create",
-    "migration:generate": "pnpm typeorm migration:generate -d ./src/database/data-source.ts",
+    "migration:generate": "pnpm typeorm migration:generate ./src/database/migrations/DeleteTables2 -d ./src/database/data-source.ts",
     "migration:run": "pnpm typeorm migration:run -d ./src/database/data-source.ts",
     "migration:revert": "pnpm typeorm migration:revert -d ./src/database/data-source.ts"
   },
