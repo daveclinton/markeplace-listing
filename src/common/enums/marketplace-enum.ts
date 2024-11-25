@@ -1,4 +1,4 @@
-export enum MarketplaceType {
+export enum MarketplaceEnum {
   EBAY = 'EBAY',
   FACEBOOK = 'FACEBOOK',
 }
