@@ -62,14 +62,15 @@ export class MarketplaceConfigService {
           'com.snaplist://feed/new-marketplace?marketplace=facebook&connection={connection}',
       },
       oauth: {
-        oauth_url: 'https://www.facebook.com/v12.0/dialog/oauth',
-        token_url: 'https://graph.facebook.com/v12.0/oauth/access_token',
+        oauth_url: 'https://www.facebook.com/v20.0/dialog/oauth',
+        token_url: 'https://graph.facebook.com/v20.0/oauth/access_token',
         client_id: this.configService.getOrThrow<string>('FACEBOOK_CLIENT_ID'),
         client_secret: this.configService.getOrThrow<string>(
           'FACEBOOK_CLIENT_SECRET',
         ),
         redirect_uri: `${baseUrl}/api/v1/marketplaces/callback/facebook`,
-        scope: 'catalog_management',
+        scope:
+          'catalog_management commerce_account_manage_orders commerce_account_read_orders',
         web_redirect_url: '',
       },
     });

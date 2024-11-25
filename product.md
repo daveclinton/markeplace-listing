@@ -72,3 +72,33 @@
     "keywords": ["wireless headphones", "noise cancelling", "premium audio"]
   }
 }
+
+
+
+curl -X POST \
+  "https://graph.facebook.com/v18.0/1145905063127700/items" \
+  -H "Authorization: Bearer EAAQSMdA76pQBOwmOs2vwPJTY0emFJTm7MzJ2tqHGTPm6gEnoqRpTPk7NHIbfekIwjtR8vt9OMi8dFGNVJowha9RLcnYyYBDfIRUtG3UZBiGlG3QV5ZCrQQHRRRHnfeZAj3Cr40uU2hyTzzFdwwNWMZBdfDCqXcLfH7owVSXxMMQzZA4VbjgfzIlkdm4v5uYiawoyl0E0efkmC01HgUbAcEPzGKw0w3ZAw7qJIKPIYX0mehtjiuMJ4xz6iaobMA" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "availability": "in stock",
+    "brand": "Sample Brand",
+    "category": "CLOTHING_ACCESSORIES",
+    "condition": "new",
+    "description": "This is a sample product description",
+    "image_urls": ["https://placekitten.com/200/200"],
+    "name": "Sample Product",
+    "price": 29.99,
+    "url": "https://example.com/product",
+    "retailer_id": "test_item_1"
+  }'
+ <!-- verify your page access: -->
+  curl -X GET \
+  "https://graph.facebook.com/v18.0/me/catalogs" \
+  -H "Authorization: Bearer EAAQSMdA76pQBO2E0Fbee0Vs8wyR54d0SiZC270ZAUxia54ZBNKzmrlFBxKE5uHiMQWb3BS4mWlnlpS42IxCtsZBniTmjxcqwnjP1p0yNldwsVafKtcfkHNZACkLOKXuWkOcERO6vZBeUZC2sU0zUgg9E7XrT8hW0YyAH3sHhRNU1me44zkq8q6gLwg6x9jACwp9reQjv3dfQnL6ZBTQfjaItE4luV8ZARsbSt7hfThMslZBN4DTclG2CBCz9VTeSy4"
+
+  <!-- get your catalog ID:
+   -->
+curl -X GET \
+  "https://graph.facebook.com/v20.0/me/businesses" \
+  -H "Authorization: Bearer EAAQSMdA76pQBO2E0Fbee0Vs8wyR54d0SiZC270ZAUxia54ZBNKzmrlFBxKE5uHiMQWb3BS4mWlnlpS42IxCtsZBniTmjxcqwnjP1p0yNldwsVafKtcfkHNZACkLOKXuWkOcERO6vZBeUZC2sU0zUgg9E7XrT8hW0YyAH3sHhRNU1me44zkq8q6gLwg6x9jACwp9reQjv3dfQnL6ZBTQfjaItE4luV8ZARsbSt7hfThMslZBN4DTclG2CBCz9VTeSy4"
+"catalog_management", and "commerce_account_read_orders";
